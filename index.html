@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0b1220" />
+<title>تیر و کمان | بازی تیراندازی</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1220'/%3E%3Ccircle cx='32' cy='32' r='21' fill='%23f4f0e4'/%3E%3Ccircle cx='32' cy='32' r='16' fill='%2326262e'/%3E%3Ccircle cx='32' cy='32' r='11' fill='%232f8fd8'/%3E%3Ccircle cx='32' cy='32' r='6.5' fill='%23e04a3f'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%23f4c542'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <defs>
+      <symbol id="i-bow" viewBox="0 0 24 24">
+        <path d="M6 3Q18 7 18 12Q18 17 6 21" />
+        <path d="M6 3V21" />
+        <path d="M3 12h12" />
+        <path d="M15 12l-3-2.2M15 12l-3 2.2" />
+      </symbol>
+      <symbol id="i-mouse" viewBox="0 0 24 24">
+        <rect x="7" y="2.5" width="10" height="19" rx="5" />
+        <path d="M12 6.5v3.5" />
+      </symbol>
+      <symbol id="i-target" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="5" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="i-wind" viewBox="0 0 24 24">
+        <path d="M3 8h11a3 3 0 1 0-3-3" />
+        <path d="M3 12h15a3 3 0 1 1-3 3" />
+        <path d="M3 16h7" />
+      </symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24">
+        <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+        <path d="M8 5H5v2a3 3 0 0 0 3 3" />
+        <path d="M16 5h3v2a3 3 0 0 1-3 3" />
+        <path d="M12 13v4" />
+        <path d="M9 20h6" />
+      </symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24">
+        <path d="M4 9h3l4-3v12l-4-3H4z" />
+        <path d="M15 9a4 4 0 0 1 0 6" />
+        <path d="M17.5 6.5a7.5 7.5 0 0 1 0 11" />
+      </symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24">
+        <path d="M4 9h3l4-3v12l-4-3H4z" />
+        <path d="M16 9l5 6M21 9l-5 6" />
+      </symbol>
+      <symbol id="i-medal" viewBox="0 0 24 24">
+        <circle cx="12" cy="9" r="5" />
+        <path d="M9 14l-2 7 5-3 5 3-2-7" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <div id="stage">
+    <canvas id="game" aria-label="زمین بازی تیر و کمان"></canvas>
+
+    <!-- ===== HUD ===== -->
+    <div class="hud" id="hud">
+      <div class="hud-top">
+        <div class="panel stat">
+          <span class="label">امتیاز</span>
+          <span class="value" id="scoreValue">۰</span>
+        </div>
+
+        <div class="panel stat wind-panel">
+          <span class="label">باد</span>
+          <div class="wind-row">
+            <span class="wind-dir" id="windDir">•</span>
+            <span class="value small" id="windValue">آرام</span>
+          </div>
+          <div class="wind-bar"><span class="wind-tick"></span><div id="windFill"></div></div>
+        </div>
+
+        <div class="panel stat">
+          <span class="label">رکورد</span>
+          <span class="value small" id="bestValue">۰</span>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="panel arrows">
+          <span class="label">تیرهای باقی‌مانده</span>
+          <div class="dots" id="arrowDots"></div>
+        </div>
+        <button class="icon-btn" id="soundBtn" type="button" aria-label="روشن/خاموش کردن صدا" title="صدا (M)">
+          <svg class="ico-svg snd-on"><use href="#i-sound"/></svg>
+          <svg class="ico-svg snd-off"><use href="#i-mute"/></svg>
+        </button>
+      </div>
+
+      <div class="hint" id="hint">
+        <b id="hintAction">دکمه ماوس</b> را نگه دار تا کمان کشیده شود، نشانه‌گیری کن و رها کن.
+      </div>
+    </div>
+
+    <!-- ===== Start screen ===== -->
+    <div class="overlay" id="startScreen">
+      <div class="card">
+        <div class="badge"><svg class="ico-svg"><use href="#i-bow"/></svg><span>تیراندازی با کمان</span></div>
+        <h1>تیر و کمان</h1>
+        <p class="sub">دقتت را محک بزن؛ ۱۲ تیر، یک رکورد.</p>
+
+        <div class="steps">
+          <div class="step"><span class="ico"><svg class="ico-svg"><use href="#i-mouse"/></svg></span><div><b>کمان را بکش</b><small id="stepPullText">دکمه ماوس را نگه دار؛ هرچه بیشتر، قدرت بیشتر.</small></div></div>
+          <div class="step"><span class="ico"><svg class="ico-svg"><use href="#i-target"/></svg></span><div><b>نشانه بگیر</b><small>نشانگر را روی سیبل ببر و رها کن.</small></div></div>
+          <div class="step"><span class="ico"><svg class="ico-svg"><use href="#i-wind"/></svg></span><div><b>باد را جبران کن</b><small>جاذبه تیر را پایین می‌کشد، باد آن را می‌راند.</small></div></div>
+          <div class="step"><span class="ico"><svg class="ico-svg"><use href="#i-trophy"/></svg></span><div><b>مرکز را بزن</b><small>طلایی = ۱۰، سفید بیرونی = ۲.</small></div></div>
+        </div>
+
+        <button class="btn primary" id="startBtn" type="button">شروع بازی</button>
+        <p class="tip" id="startTip">با کلید <kbd>Space</kbd> هم می‌توانی تیر بیندازی — کلید <kbd>M</kbd> صدا</p>
+      </div>
+    </div>
+
+    <!-- ===== Game over ===== -->
+    <div class="overlay hidden" id="overScreen">
+      <div class="card">
+        <div class="badge">پایان بازی</div>
+        <h2 id="overTitle">خوب بود!</h2>
+        <div class="new-record" id="recordBadge" hidden><svg class="ico-svg"><use href="#i-medal"/></svg><span>رکورد تازه ثبت شد</span></div>
+        <div class="final">
+          <span class="final-score" id="finalScore">۰</span>
+          <span class="final-label">امتیاز کل</span>
+        </div>
+        <div class="result-grid">
+          <div class="result"><span id="resBest">۰</span><small>بهترین رکورد</small></div>
+          <div class="result"><span id="resBull">۰</span><small>مرکز دقیق</small></div>
+          <div class="result"><span id="resAcc">۰٪</span><small>دقت</small></div>
+        </div>
+        <button class="btn primary" id="againBtn" type="button">بازی دوباره</button>
+        <p class="tip" id="againTip">کلید <kbd>R</kbd> برای شروع سریع</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rotate-hint" id="rotateHint">
+    <div class="rotate-card">
+      <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="7" y="2" width="10" height="20" rx="2.6" />
+        <path d="M4.5 8.5A10 10 0 0 0 4.5 16" />
+        <path d="M2.6 14.4l1.9 2.3 2-2.2" />
+      </svg>
+      <h3>گوشی را افقی بگیرید</h3>
+      <p>برای تجربهٔ بهتر و هدف‌گیری دقیق‌تر، صفحه را بچرخانید.</p>
+      <button class="btn primary" id="rotateContinue" type="button">ادامه در حالت عمودی</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
