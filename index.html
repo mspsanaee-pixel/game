@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>کماندار حرفه‌ای | بازی تیراندازی با کمان</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: rgba(15, 23, 42, 0.78);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --gold: #fbbf24;
+      --gold-strong: #f59e0b;
+      --emerald: #34d399;
+      --rose: #fb7185;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      font-family: Tahoma, 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--text-main);
+      touch-action: none;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* HUD Overlay */
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 18px;
+      z-index: 10;
+    }
+
+    .hud-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 58px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    .stat-value.gold {
+      color: var(--gold);
+    }
+
+    .stat-value.emerald {
+      color: var(--emerald);
+    }
+
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .arrows-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      margin-top: 3px;
+    }
+
+    .arrow-dot {
+      width: 9px;
+      height: 22px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #e2e8f0 0%, #f59e0b 35%, #b45309 100%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    .arrow-dot.used {
+      opacity: 0.2;
+      transform: scale(0.8);
+    }
+
+    .wind-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wind-arrow-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      transition: transform 0.35s ease;
+    }
+
+    .icon-btn {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      border-radius: 12px;
+      padding: 9px 13px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: auto;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(30, 41, 59, 0.92);
+      border-color: rgba(251, 191, 36, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.97);
+    }
+
+    .hud-bottom {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .hint-pill {
+      background: rgba(15, 23, 42, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      padding: 7px 15px;
+      font-size: 12px;
+      color: #e2e8f0;
+      backdrop-filter: blur(6px);
+      transition: opacity 0.4s ease;
+    }
+
+    .practice-controls {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+      flex-wrap: wrap;
+    }
+
+    /* Modals */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 13, 26, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 30;
+      transition: opacity 0.25s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 560px;
+      background: linear-gradient(160deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
+      border: 1px solid rgba(251, 191, 36, 0.28);
+      border-radius: 24px;
+      padding: 28px 26px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      text-align: center;
+    }
+
+    .badge-top {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.14);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .modal h1, .modal h2 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .modal p.sub {
+      margin: 0 0 22px;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .modes-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 11px;
+      margin-bottom: 20px;
+    }
+
+    .mode-card {
+      text-align: right;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: inherit;
+      font-family: inherit;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .mode-card:hover {
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.55);
+      transform: translateY(-2px);
+    }
+
+    .mode-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+
+    .mode-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mode-best {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+      white-space: nowrap;
+      background: rgba(251, 191, 36, 0.12);
+      padding: 6px 10px;
+      border-radius: 10px;
+    }
+
+    .controls-guide {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #cbd5e1;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 18px 0 22px;
+    }
+
+    .summary-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .summary-item .val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-item .lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24, #d97706);
+      color: #0f172a;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 900;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .streak-pill {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(249, 115, 22, 0.25));
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: #fde68a;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      display: none;
+    }
+
+    .streak-pill.active {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      animation: pulseBadge 1.2s infinite alternate;
+    }
+
+    @keyframes pulseBadge {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    @media (max-width: 700px) {
+      .hud { padding: 10px; }
+      .card { padding: 6px 10px; border-radius: 12px; }
+      .stat-value { font-size: 17px; }
+      .stat { min-width: 46px; }
+      .modal { padding: 20px 16px; }
+      .modal h1, .modal h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div class="hud" id="hud" style="display:none;">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="card">
+          <div class="stat">
+            <span class="stat-label">امتیاز</span>
+            <span class="stat-value gold" id="uiScore">0</span>
+          </div>
+          <div class="divider"></div>
+          <div class="stat">
+            <span class="stat-label" id="uiRoundLabel">راند</span>
+            <span class="stat-value" id="uiRound">1 / 5</span>
+          </div>
+          <div class="divider"></div>
+          <div class="stat">
+            <span class="stat-label">تیرها</span>
+            <div class="arrows-dots" id="uiArrowsDots"></div>
+            <span class="stat-value" id="uiArrowsText" style="display:none;">∞</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="wind-badge">
+            <div class="wind-arrow-box" id="uiWindArrow">→</div>
+            <div class="stat" style="align-items:flex-start;">
+              <span class="stat-label">باد میدان</span>
+              <span class="stat-value" id="uiWindSpeed" style="font-size:15px;">0.0 m/s</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="stat">
+            <span class="stat-label">فاصله</span>
+            <span class="stat-value emerald" id="uiDistance">35m</span>
+          </div>
+        </div>
+
+        <div class="streak-pill" id="uiStreak">🔥 کمبو x2</div>
+      </div>
+
+      <div class="hud-group">
+        <button class="icon-btn" id="btnSound" title="صدا">🔊 صدا</button>
+        <button class="icon-btn" id="btnMenu" title="منو">☰ منو</button>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="hint-pill" id="uiHint">
+        🎯 کلیک یا لمس کنید و به عقب بکشید تا کمان کشیده شود؛ رها کنید تا تیر شلیک شود (برای لغو به مرکز برگردانید)
+      </div>
+      <div class="practice-controls" id="uiPracticeControls" style="display:none;">
+        <button class="icon-btn" id="btnToggleWind">💨 تغییر باد</button>
+        <button class="icon-btn" id="btnCycleDist">📏 تغییر فاصله</button>
+        <button class="icon-btn" id="btnClearArrows">🧹 پاک کردن تیرها</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Menu Modal -->
+  <div class="overlay" id="menuOverlay">
+    <div class="modal">
+      <div class="badge-top">🏹 میدان تیراندازی سلطنتی</div>
+      <h1>کماندار حرفه‌ای</h1>
+      <p class="sub">
+        جهت باد را بخوانید، کمان را بکشید و با دقت به قلب سیبل شلیک کنید.
+        تیرها با فیزیک واقعی گرانش و مقاومت باد پرواز می‌کنند!
+      </p>
+
+      <div class="modes-grid">
+        <button class="mode-card" data-mode="classic">
+          <div>
+            <div class="mode-title">🏆 تورنمنت کلاسیک</div>
+            <div class="mode-desc">۵ راند و ۱۵ تیر — فاصله و باد به‌تدریج سخت‌تر می‌شوند و در راندهای آخر سیبل حرکت می‌کند.</div>
+          </div>
+          <div class="mode-best" id="bestClassic">رکورد: 0</div>
+        </button>
+
+        <button class="mode-card" data-mode="arcade">
+          <div>
+            <div class="mode-title">⚡ چالش آرکید (هدف متحرک)</div>
+            <div class="mode-desc">با ۶ تیر شروع کنید؛ زدن مرکز طلایی (۹ و ۱۰) یک تیر جایزه و ضریب کمبو می‌دهد!</div>
+          </div>
+          <div class="mode-best" id="bestArcade">رکورد: 0</div>
+        </button>
+
+        <button class="mode-card" data-mode="practice">
+          <div>
+            <div class="mode-title">🎯 تمرین آزاد</div>
+            <div class="mode-desc">تیرهای نامحدود با امکان تغییر دستی باد و فاصله برای تمرین و رکوردزنی دقیق.</div>
+          </div>
+          <div class="mode-best">آزاد</div>
+        </button>
+      </div>
+
+      <div class="controls-guide">
+        <span>🖱️ کشیدن ماوس / لمس: نشانه و قدرت</span>
+        <span>🌬️ باد مخالف تیر را پایین می‌کشد</span>
+        <span>🎯 حلقه X مرکزی: ۱۲ امتیاز!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over / Summary Modal -->
+  <div class="overlay hidden" id="endOverlay">
+    <div class="modal">
+      <div class="badge-top" id="endRankBadge">🏅 رتبه: کماندار ماهر</div>
+      <h2 id="endTitle">پایان مسابقه!</h2>
+      <p class="sub" id="endSubtitle">عملکرد فوق‌العاده‌ای در میدان تیراندازی داشتید.</p>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="val" id="sumScore" style="color:var(--gold);">0</div>
+          <div class="lbl">امتیاز کل</div>
+        </div>
+        <div class="summary-item">
+          <div class="val" id="sumBest" style="color:var(--emerald);">0</div>
+          <div class="lbl">بهترین رکورد</div>
+        </div>
+        <div class="summary-item">
+          <div class="val" id="sumBullseyes">0</div>
+          <div class="lbl">اصابت طلایی (۹/۱۰/X)</div>
+        </div>
+        <div class="summary-item">
+          <div class="val" id="sumAccuracy">0%</div>
+          <div class="lbl">دقت اصابت به سیبل</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="btnPlayAgain">🔄 بازی مجدد</button>
+        <button class="btn-secondary" id="btnBackMenu">🏠 منوی اصلی</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================
+      // 1. PROCEDURAL WEB AUDIO ENGINE
+      // =========================================================
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.muted = false;
+          this.lastCreakTime = 0;
+        }
+
+        ensureCtx() {
+          if (this.muted) return null;
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          return this.ctx;
+        }
+
+        playCreak(power) {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          if (now - this.lastCreakTime < 0.09) return;
+          this.lastCreakTime = now;
+
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          const freq = 95 + power * 110;
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.08, now + 0.06);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.035 * Math.max(0.2, power), now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.075);
+        }
+
+        playRelease(power) {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+
+          // Bowstring twang
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(175 + power * 90, now);
+          osc.frequency.exponentialRampToValueAtTime(58, now + 0.24);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1400, now);
+          filter.frequency.exponentialRampToValueAtTime(220, now + 0.24);
+
+          gain.gain.setValueAtTime(0.2 * (0.5 + 0.5 * power), now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.26);
+
+          // Arrow air whoosh (filtered noise)
+          const bufSize = Math.floor(ctx.sampleRate * 0.28);
+          const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.35));
+          }
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const band = ctx.createBiquadFilter();
+          band.type = 'bandpass';
+          band.frequency.setValueAtTime(1600, now);
+          band.frequency.exponentialRampToValueAtTime(480, now + 0.25);
+          band.Q.value = 1.4;
+
+          const nGain = ctx.createGain();
+          nGain.gain.setValueAtTime(0.24 * (0.4 + 0.6 * power), now);
+          nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.27);
+
+          noise.connect(band);
+          band.connect(nGain);
+          nGain.connect(ctx.destination);
+          noise.start(now);
+        }
+
+        playHitTarget(score) {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+
+          // Straw/wood thud
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(42, now + 0.13);
+
+          gain.gain.setValueAtTime(0.36, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+
+          // Score chime
+          if (score >= 9) {
+            const notes = score >= 12 ? [587.33, 880, 1174.66] : [523.25, 783.99];
+            notes.forEach((freq, idx) => {
+              const chime = ctx.createOscillator();
+              const cGain = ctx.createGain();
+              chime.type = 'sine';
+              const t = now + idx * 0.06;
+              chime.frequency.setValueAtTime(freq, t);
+              cGain.gain.setValueAtTime(0.001, t);
+              cGain.gain.linearRampToValueAtTime(0.14, t + 0.015);
+              cGain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+              chime.connect(cGain);
+              cGain.connect(ctx.destination);
+              chime.start(t);
+              chime.stop(t + 0.45);
+            });
+          } else if (score >= 5) {
+            const chime = ctx.createOscillator();
+            const cGain = ctx.createGain();
+            chime.type = 'triangle';
+            chime.frequency.setValueAtTime(440 + score * 20, now);
+            cGain.gain.setValueAtTime(0.08, now);
+            cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            chime.connect(cGain);
+            cGain.connect(ctx.destination);
+            chime.start(now);
+            chime.stop(now + 0.22);
+          }
+        }
+
+        playMiss() {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(95, now);
+          osc.frequency.exponentialRampToValueAtTime(34, now + 0.14);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        }
+
+        playFanfare() {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            const t = now + i * 0.09;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.001, t);
+            gain.gain.linearRampToValueAtTime(0.14, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.58);
+          });
+        }
+      }
+
+      // =========================================================
+      // 2. CANVAS & WORLD SETUP
+      // =========================================================
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const WORLD_W = 1280;
+      const WORLD_H = 720;
+      const GROUND_Y = 585;
+      const BOW_X = 165;
+      const BOW_Y = 445;
+      const GRAVITY = 520;
+      const MAX_ARROW_SPEED = 1140;
+      const MIN_ARROW_SPEED = 320;
+      const ARROW_LEN = 74;
+
+      let viewScale = 1;
+      let viewOffsetX = 0;
+      let viewOffsetY = 0;
+      let currentDpr = 1;
+
+      function resizeCanvas() {
+        currentDpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        canvas.width = Math.floor(w * currentDpr);
+        canvas.height = Math.floor(h * currentDpr);
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+
+        // Fit 1280x720 nicely into viewport while letting background fill edges
+        viewScale = Math.min(w / WORLD_W, h / WORLD_H);
+        viewOffsetX = (w - WORLD_W * viewScale) * 0.5;
+        viewOffsetY = (h - WORLD_H * viewScale) * 0.5;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function clientToWorld(clientX, clientY) {
+        return {
+          x: (clientX - viewOffsetX) / viewScale,
+          y: (clientY - viewOffsetY) / viewScale,
+        };
+      }
+
+      // =========================================================
+      // 3. GAME STATE & SCORING CONFIG
+      // =========================================================
+      const sound = new SoundEngine();
+
+      const RINGS = [
+        { maxRatio: 0.065, score: 12, label: 'X-RING!', color: '#fde047', textDark: true },
+        { maxRatio: 0.14,  score: 10, label: '۱۰ طلایی!', color: '#facc15', textDark: true },
+        { maxRatio: 0.24,  score: 9,  label: '۹ طلایی', color: '#eab308', textDark: true },
+        { maxRatio: 0.35,  score: 8,  label: '۸ قرمز', color: '#ef4444', textDark: false },
+        { maxRatio: 0.46,  score: 7,  label: '۷ قرمز', color: '#dc2626', textDark: false },
+        { maxRatio: 0.58,  score: 6,  label: '۶ آبی', color: '#3b82f6', textDark: false },
+        { maxRatio: 0.70,  score: 5,  label: '۵ آبی', color: '#2563eb', textDark: false },
+        { maxRatio: 0.82,  score: 4,  label: '۴ مشکی', color: '#1e293b', textDark: false },
+        { maxRatio: 0.91,  score: 3,  label: '۳ مشکی', color: '#0f172a', textDark: false },
+        { maxRatio: 1.00,  score: 2,  label: '۲ سفید', color: '#f8fafc', textDark: true },
+      ];
+
+      const STORAGE_KEYS = {
+        classic: 'archery_pro_best_classic_v1',
+        arcade: 'archery_pro_best_arcade_v1',
+      };
+
+      const state = {
+        screen: 'MENU', // MENU | PLAYING | ROUND_END | GAME_OVER
+        mode: 'classic', // classic | arcade | practice
+        score: 0,
+        round: 1,
+        maxRounds: 5,
+        arrowsPerRound: 3,
+        arrowsLeft: 3,
+        shotsFired: 0,
+        shotsHit: 0,
+        bullseyes: 0,
+        streak: 0,
+        bestStreak: 0,
+
+        wind: 0, // -6 to +6 m/s (positive = tailwind right, negative = headwind left)
+        target: {
+          x: 920,
+          baseY: 430,
+          y: 430,
+          radius: 74,
+          moveAmp: 0,
+          moveSpeed: 0,
+          movePhase: 0,
+          recoil: 0,
+          recoilVel: 0,
+          distanceMeters: 40,
+        },
+
+        aiming: {
+          active: false,
+          pointerId: null,
+          startX: 0,
+          startY: 0,
+          currX: 0,
+          currY: 0,
+          angle: -0.22,
+          power: 0,
+          cancelled: false,
+          bowShake: 0,
+          bowStringVib: 0,
+        },
+
+        flyingArrows: [],
+        stuckArrows: [], // { x, y, angle, wobble, targetAttached, relY, pipX, pipY, ringColor }
+        particles: [],
+        popups: [],
+        windStreaks: [],
+        clouds: [],
+        grassBlades: [],
+        cameraShake: 0,
+        pipTimer: 0,
+        lastHitPip: null, // { dx, dy, score }
+        roundBanner: null, // { text, sub, timer }
+        transitioning: false,
+        practiceDistIndex: 1,
+        practiceWindEnabled: true,
+        hintDismissed: false,
+      };
+
+      // Initialize ambient scenery
+      for (let i = 0; i < 6; i++) {
+        state.clouds.push({
+          x: Math.random() * 1400 - 60,
+          y: 55 + Math.random() * 130,
+          scale: 0.7 + Math.random() * 0.8,
+          speed: 6 + Math.random() * 10,
+        });
+      }
+      for (let i = 0; i < 42; i++) {
+        state.windStreaks.push({
+          x: Math.random() * WORLD_W,
+          y: 80 + Math.random() * (GROUND_Y - 110),
+          len: 35 + Math.random() * 65,
+          alpha: 0.08 + Math.random() * 0.16,
+          speedMul: 0.7 + Math.random() * 0.6,
+        });
+      }
+      for (let x = -120; x <= WORLD_W + 120; x += 14) {
+        state.grassBlades.push({
+          x: x + (Math.random() - 0.5) * 8,
+          h: 10 + Math.random() * 14,
+          phase: Math.random() * Math.PI * 2,
+          hue: 92 + Math.random() * 24,
+        });
+      }
+
+      // =========================================================
+      // 4. UI REFERENCES & HELPERS
+      // =========================================================
+      const hudEl = document.getElementById('hud');
+      const menuOverlay = document.getElementById('menuOverlay');
+      const endOverlay = document.getElementById('endOverlay');
+
+      const uiScore = document.getElementById('uiScore');
+      const uiRoundLabel = document.getElementById('uiRoundLabel');
+      const uiRound = document.getElementById('uiRound');
+      const uiArrowsDots = document.getElementById('uiArrowsDots');
+      const uiArrowsText = document.getElementById('uiArrowsText');
+      const uiWindArrow = document.getElementById('uiWindArrow');
+      const uiWindSpeed = document.getElementById('uiWindSpeed');
+      const uiDistance = document.getElementById('uiDistance');
+      const uiStreak = document.getElementById('uiStreak');
+      const uiHint = document.getElementById('uiHint');
+      const uiPracticeControls = document.getElementById('uiPracticeControls');
+
+      function getBest(mode) {
+        return Number(localStorage.getItem(STORAGE_KEYS[mode]) || 0);
+      }
+
+      function saveBest(mode, val) {
+        if (!STORAGE_KEYS[mode]) return false;
+        const prev = getBest(mode);
+        if (val > prev) {
+          localStorage.setItem(STORAGE_KEYS[mode], String(val));
+          return true;
+        }
+        return false;
+      }
+
+      function refreshBestBadges() {
+        document.getElementById('bestClassic').textContent = 'رکورد: ' + getBest('classic');
+        document.getElementById('bestArcade').textContent = 'رکورد: ' + getBest('arcade');
+      }
+      refreshBestBadges();
+
+      function updateHUD() {
+        uiScore.textContent = state.score;
+
+        if (state.mode === 'classic') {
+          uiRoundLabel.textContent = 'راند';
+          uiRound.textContent = `${state.round} / ${state.maxRounds}`;
+          uiArrowsText.style.display = 'none';
+          uiArrowsDots.style.display = 'flex';
+          uiArrowsDots.innerHTML = '';
+          for (let i = 0; i < state.arrowsPerRound; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'arrow-dot' + (i >= state.arrowsLeft ? ' used' : '');
+            uiArrowsDots.appendChild(dot);
+          }
+        } else if (state.mode === 'arcade') {
+          uiRoundLabel.textContent = 'مرحله';
+          uiRound.textContent = `${state.round}`;
+          uiArrowsDots.style.display = 'none';
+          uiArrowsText.style.display = 'block';
+          uiArrowsText.textContent = `${state.arrowsLeft} 🏹`;
+        } else {
+          uiRoundLabel.textContent = 'حالت';
+          uiRound.textContent = 'تمرین';
+          uiArrowsDots.style.display = 'none';
+          uiArrowsText.style.display = 'block';
+          uiArrowsText.textContent = '∞';
+        }
+
+        const absWind = Math.abs(state.wind).toFixed(1);
+        if (Math.abs(state.wind) < 0.15) {
+          uiWindArrow.textContent = '•';
+          uiWindArrow.style.color = '#94a3b8';
+          uiWindSpeed.textContent = 'آرام (0.0)';
+        } else if (state.wind > 0) {
+          uiWindArrow.textContent = '→';
+          uiWindArrow.style.color = '#34d399';
+          uiWindSpeed.textContent = `${absWind} m/s موافق`;
+        } else {
+          uiWindArrow.textContent = '←';
+          uiWindArrow.style.color = '#fb7185';
+          uiWindSpeed.textContent = `${absWind} m/s مخالف`;
+        }
+
+        uiDistance.textContent = `${state.target.distanceMeters}m`;
+
+        if (state.streak >= 2) {
+          uiStreak.classList.add('active');
+          const mult = Math.min(3, 1 + Math.floor(state.streak / 2));
+          uiStreak.textContent = state.mode === 'arcade'
+            ? `🔥 کمبو ${state.streak} (ضریب x${mult})`
+            : `🔥 پیاپی ${state.streak} طلایی`;
+        } else {
+          uiStreak.classList.remove('active');
+        }
+
+        uiPracticeControls.style.display = state.mode === 'practice' ? 'flex' : 'none';
+        uiHint.style.opacity = state.hintDismissed ? '0' : '1';
+      }
+
+      // =========================================================
+      // 5. ROUND & MODE MANAGEMENT
+      // =========================================================
+      const PRACTICE_DISTANCES = [
+        { x: 780, m: 30, r: 80 },
+        { x: 920, m: 45, r: 74 },
+        { x: 1060, m: 60, r: 68 },
+        { x: 1145, m: 70, r: 64 },
+      ];
+
+      function setupRound(roundNum) {
+        state.transitioning = false;
+        state.round = roundNum;
+        state.stuckArrows = state.stuckArrows.filter(a => !a.targetAttached);
+        if (state.mode === 'classic') {
+          state.arrowsLeft = state.arrowsPerRound;
+        }
+
+        const t = state.target;
+        t.movePhase = 0;
+
+        if (state.mode === 'classic') {
+          const configs = [
+            { x: 820,  m: 30, y: 445, r: 78, amp: 0,  spd: 0,   windMax: 1.5 },
+            { x: 900,  m: 40, y: 425, r: 74, amp: 0,  spd: 0,   windMax: 3.0 },
+            { x: 985,  m: 50, y: 405, r: 70, amp: 24, spd: 1.2, windMax: 4.2 },
+            { x: 1060, m: 60, y: 395, r: 66, amp: 48, spd: 1.7, windMax: 5.2 },
+            { x: 1130, m: 70, y: 385, r: 62, amp: 65, spd: 2.1, windMax: 6.0 },
+          ];
+          const c = configs[Math.min(roundNum - 1, configs.length - 1)];
+          t.x = c.x;
+          t.distanceMeters = c.m;
+          t.baseY = c.y;
+          t.y = c.y;
+          t.radius = c.r;
+          t.moveAmp = c.amp;
+          t.moveSpeed = c.spd;
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          state.wind = roundNum === 1 ? 0 : Number((dir * (0.8 + Math.random() * (c.windMax - 0.8))).toFixed(1));
+          showBanner(`راند ${roundNum} از ${state.maxRounds}`, `فاصله ${t.distanceMeters} متر`);
+        } else if (state.mode === 'arcade') {
+          const distIdx = Math.min(3, Math.floor((roundNum - 1) / 2));
+          const preset = PRACTICE_DISTANCES[distIdx];
+          t.x = preset.x + (Math.random() - 0.5) * 50;
+          t.distanceMeters = Math.round((t.x - BOW_X) / 14);
+          t.baseY = 340 + Math.random() * 120;
+          t.y = t.baseY;
+          t.radius = Math.max(58, preset.r - roundNum * 1.2);
+          t.moveAmp = Math.min(82, 22 + roundNum * 9);
+          t.moveSpeed = Math.min(2.6, 1.1 + roundNum * 0.18);
+          state.wind = Number(((Math.random() * 2 - 1) * Math.min(6, 1.5 + roundNum * 0.5)).toFixed(1));
+        } else {
+          // Practice
+          const p = PRACTICE_DISTANCES[state.practiceDistIndex];
+          t.x = p.x;
+          t.distanceMeters = p.m;
+          t.baseY = 425;
+          t.y = 425;
+          t.radius = p.r;
+          t.moveAmp = 0;
+          t.moveSpeed = 0;
+        }
+
+        updateHUD();
+      }
+
+      function showBanner(text, sub) {
+        state.roundBanner = { text, sub, timer: 1.85 };
+      }
+
+      function startGame(mode) {
+        state.mode = mode;
+        state.screen = 'PLAYING';
+        state.score = 0;
+        state.round = 1;
+        state.shotsFired = 0;
+        state.shotsHit = 0;
+        state.bullseyes = 0;
+        state.streak = 0;
+        state.bestStreak = 0;
+        state.flyingArrows = [];
+        state.stuckArrows = [];
+        state.particles = [];
+        state.popups = [];
+        state.lastHitPip = null;
+        state.pipTimer = 0;
+        state.arrowsLeft = mode === 'classic' ? 3 : mode === 'arcade' ? 6 : 999;
+
+        if (mode === 'practice') {
+          state.wind = state.practiceWindEnabled ? 2.2 : 0;
+        }
+
+        menuOverlay.classList.add('hidden');
+        endOverlay.classList.add('hidden');
+        hudEl.style.display = 'flex';
+
+        setupRound(1);
+        sound.ensureCtx();
+      }
+
+      function finishGame() {
+        state.screen = 'GAME_OVER';
+        const isNewBest = saveBest(state.mode, state.score);
+        refreshBestBadges();
+
+        const acc = state.shotsFired > 0 ? Math.round((state.shotsHit / state.shotsFired) * 100) : 0;
+        const best = getBest(state.mode);
+
+        let rank = '🏹 کماندار نوآموز';
+        if (state.mode === 'classic') {
+          if (state.score >= 135) rank = '👑 استاد بزرگ کمانداری';
+          else if (state.score >= 105) rank = '🥇 کماندار طلایی';
+          else if (state.score >= 75) rank = '🥈 تیرانداز ماهر';
+          else if (state.score >= 45) rank = '🥉 کماندار میدان';
+        } else {
+          if (state.score >= 150) rank = '👑 افسانه آرکید';
+          else if (state.score >= 90) rank = '🥇 شکارچی سیبل';
+          else if (state.score >= 45) rank = '🥈 تیرانداز سریع';
+        }
+
+        document.getElementById('endRankBadge').textContent = isNewBest ? '🌟 رکورد جدید! ' + rank : rank;
+        document.getElementById('endTitle').textContent = isNewBest ? 'تبریک! رکورد جدید ثبت شد!' : 'پایان مسابقه!';
+        document.getElementById('endSubtitle').textContent =
+          `بهترین زنجیره طلایی شما: ${state.bestStreak} اصابت پیاپی`;
+        document.getElementById('sumScore').textContent = state.score;
+        document.getElementById('sumBest').textContent = best;
+        document.getElementById('sumBullseyes').textContent = state.bullseyes;
+        document.getElementById('sumAccuracy').textContent = acc + '%';
+
+        endOverlay.classList.remove('hidden');
+        sound.playFanfare();
+      }
+
+      // Menu buttons
+      document.querySelectorAll('.mode-card').forEach(btn => {
+        btn.addEventListener('click', () => startGame(btn.dataset.mode));
+      });
+      document.getElementById('btnPlayAgain').addEventListener('click', () => startGame(state.mode));
+      document.getElementById('btnBackMenu').addEventListener('click', () => {
+        state.screen = 'MENU';
+        endOverlay.classList.add('hidden');
+        hudEl.style.display = 'none';
+        menuOverlay.classList.remove('hidden');
+        refreshBestBadges();
+      });
+      document.getElementById('btnMenu').addEventListener('click', () => {
+        state.screen = 'MENU';
+        hudEl.style.display = 'none';
+        endOverlay.classList.add('hidden');
+        menuOverlay.classList.remove('hidden');
+        refreshBestBadges();
+      });
+      document.getElementById('btnSound').addEventListener('click', (e) => {
+        sound.muted = !sound.muted;
+        e.currentTarget.textContent = sound.muted ? '🔇 بی‌صدا' : '🔊 صدا';
+      });
+
+      // Practice controls
+      document.getElementById('btnToggleWind').addEventListener('click', () => {
+        state.wind = Number(((Math.random() * 2 - 1) * 5.8).toFixed(1));
+        if (Math.abs(state.wind) < 0.8) state.wind = 0;
+        updateHUD();
+      });
+      document.getElementById('btnCycleDist').addEventListener('click', () => {
+        state.practiceDistIndex = (state.practiceDistIndex + 1) % PRACTICE_DISTANCES.length;
+        state.stuckArrows = state.stuckArrows.filter(a => !a.targetAttached);
+        setupRound(1);
+      });
+      document.getElementById('btnClearArrows').addEventListener('click', () => {
+        state.stuckArrows = [];
+        state.lastHitPip = null;
+      });
+
+      // =========================================================
+      // 6. INPUT HANDLING (PULL-BACK BOW CONTROLS)
+      // =========================================================
+      function updateAimFromPointer(wx, wy) {
+        const dx = state.aiming.startX - wx;
+        const dy = state.aiming.startY - wy;
+        const dragDist = Math.hypot(dx, dy);
+
+        const maxDrag = 190;
+        const cancelThreshold = 18;
+
+        if (dragDist < cancelThreshold) {
+          state.aiming.power = 0;
+          state.aiming.cancelled = true;
+          return;
+        }
+
+        state.aiming.cancelled = false;
+        const power = Math.min(1, (dragDist - cancelThreshold) / (maxDrag - cancelThreshold));
+        state.aiming.power = power;
+
+        // Clamp aiming angle to realistic forward arc (-65 deg up to +30 deg down)
+        let angle = Math.atan2(dy, dx);
+        // If dragging forward instead of backward, still clamp sensibly
+        if (dx < 0) {
+          angle = dy >= 0 ? 0.52 : -1.13;
+        }
+        angle = Math.max(-1.13, Math.min(0.52, angle));
+        state.aiming.angle = angle;
+
+        if (power > 0.25) {
+          sound.playCreak(power);
+        }
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (state.screen !== 'PLAYING' || state.transitioning) return;
+        if (state.mode !== 'practice' && state.arrowsLeft <= 0) return;
+        if (state.flyingArrows.length > 0 && state.mode !== 'practice') return;
+
+        const pt = clientToWorld(e.clientX, e.clientY);
+        state.aiming.active = true;
+        state.aiming.pointerId = e.pointerId;
+        state.aiming.startX = pt.x;
+        state.aiming.startY = pt.y;
+        state.aiming.currX = pt.x;
+        state.aiming.currY = pt.y;
+        state.aiming.power = 0;
+        state.aiming.cancelled = true;
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!state.aiming.active || e.pointerId !== state.aiming.pointerId) return;
+        const pt = clientToWorld(e.clientX, e.clientY);
+        state.aiming.currX = pt.x;
+        state.aiming.currY = pt.y;
+        updateAimFromPointer(pt.x, pt.y);
+      });
+
+      function endAim(e) {
+        if (!state.aiming.active || e.pointerId !== state.aiming.pointerId) return;
+        state.aiming.active = false;
+        if (canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+
+        if (!state.aiming.cancelled && state.aiming.power >= 0.08) {
+          fireArrow(state.aiming.angle, state.aiming.power);
+        }
+        state.aiming.power = 0;
+      }
+
+      canvas.addEventListener('pointerup', endAim);
+      canvas.addEventListener('pointercancel', (e) => {
+        if (e.pointerId === state.aiming.pointerId) {
+          state.aiming.active = false;
+          state.aiming.power = 0;
+        }
+      });
+
+      function fireArrow(angle, power) {
+        state.hintDismissed = true;
+        const speed = MIN_ARROW_SPEED + (MAX_ARROW_SPEED - MIN_ARROW_SPEED) * power;
+        const pullBack = 16 + power * 28;
+        const nockX = BOW_X - Math.cos(angle) * pullBack;
+        const nockY = BOW_Y - Math.sin(angle) * pullBack;
+        const tipX = nockX + Math.cos(angle) * ARROW_LEN;
+        const tipY = nockY + Math.sin(angle) * ARROW_LEN;
+
+        state.flyingArrows.push({
+          x: tipX,
+          y: tipY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          angle,
+          trail: [],
+        });
+
+        state.aiming.bowStringVib = 1.0;
+        state.aiming.bowShake = 0.7;
+        state.shotsFired += 1;
+
+        if (state.mode !== 'practice') {
+          state.arrowsLeft = Math.max(0, state.arrowsLeft - 1);
+        }
+
+        sound.playRelease(power);
+        updateHUD();
+      }
+
+      // =========================================================
+      // 7. PARTICLES, POPUPS & SCORING LOGIC
+      // =========================================================
+      function spawnParticles(x, y, color, count, speed = 180) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const s = (0.3 + Math.random() * 0.9) * speed;
+          state.particles.push({
+            x, y,
+            vx: Math.cos(a) * s,
+            vy: Math.sin(a) * s - 40,
+            life: 0.45 + Math.random() * 0.4,
+            maxLife: 0.85,
+            size: 2 + Math.random() * 3.5,
+            color,
+          });
+        }
+      }
+
+      function addPopup(x, y, text, subText, color) {
+        state.popups.push({
+          x, y,
+          vy: -55,
+          text,
+          subText: subText || '',
+          color,
+          life: 1.5,
+          maxLife: 1.5,
+        });
+      }
+
+      function evaluateTargetHit(hitY) {
+        const t = state.target;
+        const dy = hitY - t.y;
+        const absDy = Math.abs(dy);
+        const ratio = absDy / t.radius;
+
+        let ring = RINGS[RINGS.length - 1];
+        for (const r of RINGS) {
+          if (ratio <= r.maxRatio) {
+            ring = r;
+            break;
+          }
+        }
+
+        let points = ring.score;
+        let bonusNote = '';
+
+        if (ring.score >= 9) {
+          state.bullseyes += 1;
+          state.streak += 1;
+          if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+          if (state.mode === 'arcade') {
+            const mult = Math.min(3, 1 + Math.floor(state.streak / 2));
+            points *= mult;
+            state.arrowsLeft += 1;
+            bonusNote = mult > 1 ? `+1 تیر | ضریب x${mult}` : '+1 تیر جایزه!';
+          } else if (state.streak >= 2) {
+            bonusNote = `🔥 ${state.streak} طلایی پیاپی`;
+          }
+        } else {
+          state.streak = 0;
+        }
+
+        state.score += points;
+        state.shotsHit += 1;
+
+        // Visual PiP offset: keep exact radial distance on the PiP target face
+        // while adding subtle lateral variation capped inside the exact ring
+        const maxLateral = Math.min(absDy * 0.25, t.radius * 0.04);
+        const pipX = (Math.random() * 2 - 1) * maxLateral;
+        const pipY = dy;
+        state.lastHitPip = { x: pipX, y: pipY, score: ring.score, color: ring.color };
+        state.pipTimer = 3.2;
+
+        // Target recoil & impact juice
+        t.recoilVel = 185;
+        state.cameraShake = ring.score >= 10 ? 7 : 3.5;
+
+        sound.playHitTarget(ring.score);
+        spawnParticles(t.x - 4, hitY, ring.score >= 9 ? '#fde047' : '#ffffff', ring.score >= 9 ? 22 : 11);
+        addPopup(
+          t.x - 35,
+          hitY - 26,
+          `+${points} (${ring.label})`,
+          bonusNote,
+          ring.score >= 9 ? '#fde047' : '#f8fafc'
+        );
+
+        // In Arcade mode, advance round & shift target after every hit
+        if (state.mode === 'arcade') {
+          state.transitioning = true;
+          setTimeout(() => {
+            if (state.screen === 'PLAYING' && state.arrowsLeft > 0) {
+              setupRound(state.round + 1);
+            } else {
+              state.transitioning = false;
+            }
+          }, 550);
+        }
+
+        updateHUD();
+      }
+
+      function handlePostShotProgression() {
+        if (state.mode === 'practice') return;
+        if (state.flyingArrows.length > 0) return;
+
+        if (state.mode === 'classic') {
+          if (state.arrowsLeft <= 0) {
+            state.transitioning = true;
+            if (state.round < state.maxRounds) {
+              setTimeout(() => {
+                if (state.screen === 'PLAYING') {
+                  setupRound(state.round + 1);
+                }
+              }, 850);
+            } else {
+              setTimeout(() => {
+                if (state.screen === 'PLAYING') {
+                  finishGame();
+                }
+              }, 950);
+            }
+          }
+        } else if (state.mode === 'arcade') {
+          if (state.arrowsLeft <= 0) {
+            state.transitioning = true;
+            setTimeout(() => {
+              if (state.screen === 'PLAYING') {
+                finishGame();
+              }
+            }, 850);
+          }
+        }
+      }
+
+      // =========================================================
+      // 8. PHYSICS & UPDATE LOOP
+      // =========================================================
+      let lastTime = performance.now();
+
+      function update(dt) {
+        // Clouds
+        for (const c of state.clouds) {
+          c.x += (c.speed + state.wind * 3.5) * dt;
+          if (c.x > WORLD_W + 140) c.x = -140;
+          if (c.x < -140) c.x = WORLD_W + 140;
+        }
+
+        // Wind streaks
+        const windVisSpeed = state.wind * 42;
+        for (const ws of state.windStreaks) {
+          if (Math.abs(state.wind) > 0.15) {
+            ws.x += windVisSpeed * ws.speedMul * dt;
+            if (ws.x > WORLD_W + 100) ws.x = -100;
+            if (ws.x < -100) ws.x = WORLD_W + 100;
+          }
+        }
+
+        // Bow vibration decay
+        if (state.aiming.bowStringVib > 0) {
+          state.aiming.bowStringVib = Math.max(0, state.aiming.bowStringVib - dt * 3.2);
+        }
+        if (state.aiming.bowShake > 0) {
+          state.aiming.bowShake = Math.max(0, state.aiming.bowShake - dt * 3.5);
+        }
+        if (state.cameraShake > 0) {
+          state.cameraShake = Math.max(0, state.cameraShake - dt * 22);
+        }
+        if (state.pipTimer > 0) {
+          state.pipTimer = Math.max(0, state.pipTimer - dt);
+        }
+        if (state.roundBanner) {
+          state.roundBanner.timer -= dt;
+          if (state.roundBanner.timer <= 0) state.roundBanner = null;
+        }
+
+        // Target motion & spring recoil
+        const t = state.target;
+        if (t.moveAmp > 0 && state.screen === 'PLAYING') {
+          t.movePhase += t.moveSpeed * dt;
+          t.y = t.baseY + Math.sin(t.movePhase) * t.moveAmp;
+        }
+        // Spring recoil back to 0
+        const k = 160;
+        const damp = 14;
+        t.recoilVel += (-k * t.recoil - damp * t.recoilVel) * dt;
+        t.recoil += t.recoilVel * dt;
+
+        // Stuck arrows wobble
+        for (const sa of state.stuckArrows) {
+          if (sa.wobble > 0) {
+            sa.wobble = Math.max(0, sa.wobble - dt * 2.4);
+          }
+          if (sa.targetAttached) {
+            sa.y = t.y + sa.relY;
+            sa.x = t.x + t.recoil;
+          }
+        }
+
+        // Flying arrows
+        for (let i = state.flyingArrows.length - 1; i >= 0; i--) {
+          const a = state.flyingArrows[i];
+          const prevX = a.x;
+          const prevY = a.y;
+
+          // Aerodynamic drag + wind acceleration + gravity
+          const windAccel = state.wind * 32;
+          a.vx += windAccel * dt;
+          a.vy += GRAVITY * dt;
+
+          // Light air drag
+          a.vx *= Math.max(0, 1 - 0.04 * dt);
+          a.vy *= Math.max(0, 1 - 0.03 * dt);
+
+          a.x += a.vx * dt;
+          a.y += a.vy * dt;
+          a.angle = Math.atan2(a.vy, a.vx);
+
+          a.trail.push({ x: a.x - Math.cos(a.angle) * 20, y: a.y - Math.sin(a.angle) * 20 });
+          if (a.trail.length > 14) a.trail.shift();
+
+          // Check target face intersection (continuous segment vs vertical target face plane)
+          const faceX = t.x + t.recoil - 4;
+          if (prevX <= faceX && a.x >= faceX) {
+            const frac = (faceX - prevX) / Math.max(0.0001, a.x - prevX);
+            const hitY = prevY + (a.y - prevY) * frac;
+
+            if (Math.abs(hitY - t.y) <= t.radius + 3) {
+              // HIT TARGET!
+              const clampedY = Math.max(t.y - t.radius, Math.min(t.y + t.radius, hitY));
+              evaluateTargetHit(clampedY);
+
+              state.stuckArrows.push({
+                x: faceX + 4,
+                y: clampedY,
+                relY: clampedY - t.y,
+                angle: a.angle,
+                wobble: 1.0,
+                targetAttached: true,
+                pipX: state.lastHitPip.x,
+                pipY: state.lastHitPip.y,
+              });
+              if (state.stuckArrows.length > 24) state.stuckArrows.shift();
+
+              state.flyingArrows.splice(i, 1);
+              handlePostShotProgression();
+              continue;
+            }
+          }
+
+          // Check ground hit
+          if (a.y >= GROUND_Y) {
+            const frac = (GROUND_Y - prevY) / Math.max(0.0001, a.y - prevY);
+            const hitX = prevX + (a.x - prevX) * frac;
+
+            state.stuckArrows.push({
+              x: hitX,
+              y: GROUND_Y + 2,
+              relY: 0,
+              angle: a.angle,
+              wobble: 0.75,
+              targetAttached: false,
+            });
+            if (state.stuckArrows.length > 24) state.stuckArrows.shift();
+
+            state.streak = 0;
+            sound.playMiss();
+            spawnParticles(hitX, GROUND_Y, '#65a30d', 8, 100);
+            addPopup(hitX, GROUND_Y - 30, 'خارج از سیبل!', '', '#fda4af');
+            state.flyingArrows.splice(i, 1);
+            updateHUD();
+            handlePostShotProgression();
+            continue;
+          }
+
+          // Out of bounds right/top
+          if (a.x > WORLD_W + 160 || a.y < -600) {
+            state.streak = 0;
+            sound.playMiss();
+            addPopup(WORLD_W - 140, 260, 'تیر از میدان خارج شد', '', '#fda4af');
+            state.flyingArrows.splice(i, 1);
+            updateHUD();
+            handlePostShotProgression();
+          }
+        }
+
+        // Particles
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.vy += 320 * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+
+        // Popups
+        for (let i = state.popups.length - 1; i >= 0; i--) {
+          const pop = state.popups[i];
+          pop.y += pop.vy * dt;
+          pop.vy *= 0.96;
+          pop.life -= dt;
+          if (pop.life <= 0) state.popups.splice(i, 1);
+        }
+      }
+
+      // =========================================================
+      // 9. RENDERING (SCENERY, BOW, TARGET, ARROWS, PIP ZOOM)
+      // =========================================================
+      function drawBackground(time) {
+        const w = canvas.width / currentDpr;
+        const h = canvas.height / currentDpr;
+        ctx.setTransform(currentDpr, 0, 0, currentDpr, 0, 0);
+
+        // Full-viewport golden hour sky
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+        skyGrad.addColorStop(0, '#0f2547');
+        skyGrad.addColorStop(0.35, '#254b7c');
+        skyGrad.addColorStop(0.68, '#d97757');
+        skyGrad.addColorStop(0.88, '#f6b26b');
+        skyGrad.addColorStop(1, '#1e3a1e');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        ctx.translate(viewOffsetX, viewOffsetY);
+        ctx.scale(viewScale, viewScale);
+
+        // Camera shake
+        if (state.cameraShake > 0) {
+          ctx.translate(
+            (Math.random() - 0.5) * state.cameraShake,
+            (Math.random() - 0.5) * state.cameraShake
+          );
+        }
+
+        // Warm sun glow
+        const sunX = 960;
+        const sunY = 185;
+        const sunGlow = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 240);
+        sunGlow.addColorStop(0, 'rgba(255, 247, 200, 0.95)');
+        sunGlow.addColorStop(0.18, 'rgba(253, 224, 71, 0.45)');
+        sunGlow.addColorStop(0.55, 'rgba(251, 146, 60, 0.14)');
+        sunGlow.addColorStop(1, 'rgba(251, 146, 60, 0)');
+        ctx.fillStyle = sunGlow;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 240, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Clouds
+        for (const c of state.clouds) {
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.scale(c.scale, c.scale);
+          ctx.fillStyle = 'rgba(255, 237, 213, 0.22)';
+          ctx.beginPath();
+          ctx.arc(0, 0, 26, 0, Math.PI * 2);
+          ctx.arc(28, -8, 32, 0, Math.PI * 2);
+          ctx.arc(60, 0, 24, 0, Math.PI * 2);
+          ctx.arc(28, 8, 26, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Far mountains
+        ctx.fillStyle = 'rgba(30, 41, 72, 0.65)';
+        ctx.beginPath();
+        ctx.moveTo(-250, GROUND_Y);
+        ctx.lineTo(-80, 360);
+        ctx.lineTo(140, 435);
+        ctx.lineTo(360, 315);
+        ctx.lineTo(590, 420);
+        ctx.lineTo(820, 300);
+        ctx.lineTo(1060, 405);
+        ctx.lineTo(1310, 330);
+        ctx.lineTo(1550, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Mid rolling hills + pine silhouettes
+        ctx.fillStyle = '#253c2e';
+        ctx.beginPath();
+        ctx.moveTo(-250, GROUND_Y);
+        ctx.quadraticCurveTo(180, 445, 520, 505);
+        ctx.quadraticCurveTo(880, 555, 1520, 465);
+        ctx.lineTo(1520, GROUND_Y + 40);
+        ctx.lineTo(-250, GROUND_Y + 40);
+        ctx.closePath();
+        ctx.fill();
+
+        // Distant cypress/pine trees
+        ctx.fillStyle = '#1b2e23';
+        for (let tx = -120; tx < WORLD_W + 180; tx += 74) {
+          const baseH = 38 + ((tx * 17) % 28);
+          const ty = 492 + Math.sin(tx * 0.01) * 16;
+          ctx.beginPath();
+          ctx.moveTo(tx, ty - baseH);
+          ctx.lineTo(tx - 15, ty + 14);
+          ctx.lineTo(tx + 15, ty + 14);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Wind streaks in the air
+        if (Math.abs(state.wind) > 0.15) {
+          ctx.lineCap = 'round';
+          for (const ws of state.windStreaks) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${ws.alpha * Math.min(1, Math.abs(state.wind) / 3)})`;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(ws.x, ws.y);
+            ctx.lineTo(ws.x + ws.len, ws.y);
+            ctx.stroke();
+          }
+        }
+
+        // Foreground meadow ground
+        const groundGrad = ctx.createLinearGradient(0, GROUND_Y - 10, 0, WORLD_H + 140);
+        groundGrad.addColorStop(0, '#4d7c2b');
+        groundGrad.addColorStop(0.25, '#365e1f');
+        groundGrad.addColorStop(1, '#182c11');
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(-350, GROUND_Y, WORLD_W + 700, 320);
+
+        // Ground highlight rim
+        ctx.fillStyle = 'rgba(190, 242, 100, 0.25)';
+        ctx.fillRect(-350, GROUND_Y, WORLD_W + 700, 4);
+
+        // Distance yardage markers on field
+        ctx.font = 'bold 12px Tahoma, sans-serif';
+        ctx.textAlign = 'center';
+        for (let d = 20; d <= 70; d += 10) {
+          const mx = BOW_X + d * 14;
+          if (mx < WORLD_W - 20) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.fillRect(mx - 1, GROUND_Y + 4, 2, 14);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillText(d + 'm', mx, GROUND_Y + 32);
+          }
+        }
+
+        // Swaying grass blades
+        const windLean = state.wind * 1.4;
+        for (const g of state.grassBlades) {
+          const sway = Math.sin(time * 3.2 + g.phase) * (2 + Math.abs(state.wind) * 0.6) + windLean;
+          ctx.strokeStyle = `hsl(${g.hue}, 52%, 34%)`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(g.x, GROUND_Y + 2);
+          ctx.quadraticCurveTo(g.x + sway * 0.5, GROUND_Y - g.h * 0.5, g.x + sway, GROUND_Y - g.h);
+          ctx.stroke();
+        }
+      }
+
+      function drawTarget(time) {
+        const t = state.target;
+        const tx = t.x + t.recoil;
+        const ty = t.y;
+        const r = t.radius;
+        const rx = r * 0.36; // 3/4 perspective foreshortening
+
+        // Ground shadow under target stand
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+        ctx.beginPath();
+        ctx.ellipse(tx + 10, GROUND_Y + 5, 48, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Wooden tripod legs
+        ctx.strokeStyle = '#6b4226';
+        ctx.lineWidth = 9;
+        ctx.lineCap = 'round';
+        // Back leg
+        ctx.beginPath();
+        ctx.moveTo(tx + 12, ty + 10);
+        ctx.lineTo(tx + 46, GROUND_Y + 4);
+        ctx.stroke();
+        // Front legs
+        ctx.strokeStyle = '#855331';
+        ctx.beginPath();
+        ctx.moveTo(tx - 6, ty + 15);
+        ctx.lineTo(tx - 24, GROUND_Y + 5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(tx + 8, ty + 15);
+        ctx.lineTo(tx + 18, GROUND_Y + 5);
+        ctx.stroke();
+
+        // Wind flag pole atop the stand
+        const poleTopY = ty - r - 56;
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(tx + 8, ty - r + 8);
+        ctx.lineTo(tx + 8, poleTopY);
+        ctx.stroke();
+
+        // Fluttering wind flag
+        const windAbs = Math.abs(state.wind);
+        const dir = state.wind >= 0 ? 1 : -1;
+        const flagLen = windAbs < 0.15 ? 10 : Math.min(44, 16 + windAbs * 4.8);
+        const drop = windAbs < 0.15 ? 18 : Math.max(2, 14 - windAbs * 2);
+        const wave = Math.sin(time * (4 + windAbs * 2.5)) * (2 + windAbs * 0.6);
+
+        ctx.fillStyle = windAbs < 0.15 ? '#94a3b8' : state.wind > 0 ? '#34d399' : '#fb7185';
+        ctx.beginPath();
+        ctx.moveTo(tx + 8, poleTopY + 2);
+        ctx.quadraticCurveTo(
+          tx + 8 + dir * flagLen * 0.5, poleTopY + 2 + drop * 0.5 + wave,
+          tx + 8 + dir * flagLen, poleTopY + 6 + drop + wave
+        );
+        ctx.lineTo(tx + 8 + dir * flagLen * 0.85, poleTopY + 18 + drop - wave * 0.5);
+        ctx.quadraticCurveTo(
+          tx + 8 + dir * flagLen * 0.4, poleTopY + 14 + drop * 0.4,
+          tx + 8, poleTopY + 16
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        // Straw backing cylinder thickness (3D depth on right side)
+        ctx.fillStyle = '#d9a45b';
+        ctx.beginPath();
+        ctx.ellipse(tx + 14, ty, rx + 5, r + 4, 0, -Math.PI * 0.5, Math.PI * 0.5);
+        ctx.lineTo(tx, ty + r + 4);
+        ctx.ellipse(tx, ty, rx + 5, r + 4, 0, Math.PI * 0.5, -Math.PI * 0.5, true);
+        ctx.closePath();
+        ctx.fill();
+
+        // Straw rim shading
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // White outer target border
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.ellipse(tx, ty, rx + 3, r + 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Concentric target rings (outside-in)
+        for (let i = RINGS.length - 1; i >= 0; i--) {
+          const ring = RINGS[i];
+          ctx.fillStyle = ring.color;
+          ctx.beginPath();
+          ctx.ellipse(tx, ty, rx * ring.maxRatio, r * ring.maxRatio, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = i <= 2 ? 'rgba(180,83,9,0.45)' : 'rgba(255,255,255,0.22)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      function drawArrowShape(tipX, tipY, angle, wobblePhase = 0) {
+        ctx.save();
+        ctx.translate(tipX, tipY);
+        ctx.rotate(angle + wobblePhase);
+
+        // Shaft
+        ctx.strokeStyle = '#e7c697';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN, 0);
+        ctx.lineTo(-8, 0);
+        ctx.stroke();
+
+        // Shaft wood stripe
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN + 8, 0);
+        ctx.lineTo(-ARROW_LEN + 22, 0);
+        ctx.stroke();
+
+        // Fletching feathers (crimson & gold)
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN + 3, -1);
+        ctx.lineTo(-ARROW_LEN - 5, -7);
+        ctx.lineTo(-ARROW_LEN + 11, -6);
+        ctx.lineTo(-ARROW_LEN + 16, -1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN + 3, 1);
+        ctx.lineTo(-ARROW_LEN - 5, 7);
+        ctx.lineTo(-ARROW_LEN + 11, 6);
+        ctx.lineTo(-ARROW_LEN + 16, 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Metallic arrowhead
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(2, 0);
+        ctx.lineTo(-10, -4.5);
+        ctx.lineTo(-7, 0);
+        ctx.lineTo(-10, 4.5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function drawBowAndArcher(time) {
+        const aim = state.aiming;
+        const angle = aim.active ? aim.angle : -0.18;
+        const power = aim.active && !aim.cancelled ? aim.power : 0;
+
+        // Archer silhouette / stand behind bow
+        ctx.save();
+        // Ground shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(BOW_X - 24, GROUND_Y + 4, 34, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Archer legs & tunic
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 11;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(BOW_X - 30, GROUND_Y);
+        ctx.lineTo(BOW_X - 22, BOW_Y + 45);
+        ctx.lineTo(BOW_X - 8, GROUND_Y);
+        ctx.stroke();
+
+        // Cape / quiver
+        ctx.fillStyle = '#78350f';
+        ctx.save();
+        ctx.translate(BOW_X - 34, BOW_Y + 12);
+        ctx.rotate(-0.35);
+        ctx.fillRect(-6, -24, 10, 36);
+        ctx.restore();
+
+        // Torso
+        ctx.fillStyle = '#14532d';
+        ctx.beginPath();
+        ctx.roundRect(BOW_X - 34, BOW_Y - 10, 24, 58, 10);
+        ctx.fill();
+
+        // Head + archer hood/cap
+        ctx.fillStyle = '#f1c27d';
+        ctx.beginPath();
+        ctx.arc(BOW_X - 21, BOW_Y - 24, 13, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#166534';
+        ctx.beginPath();
+        ctx.arc(BOW_X - 23, BOW_Y - 27, 14, Math.PI * 0.85, Math.PI * 2.05);
+        ctx.fill();
+
+        // Bow rotation & draw geometry
+        const shakeOffset = aim.bowShake > 0 ? Math.sin(time * 48) * aim.bowShake * 2.5 : 0;
+        ctx.translate(BOW_X, BOW_Y + shakeOffset);
+        ctx.rotate(angle);
+
+        const limbBend = power * 14;
+        const topTipX = -10 - limbBend;
+        const topTipY = -56 + power * 4;
+        const botTipX = -10 - limbBend;
+        const botTipY = 56 - power * 4;
+
+        const pullDist = 16 + power * 28;
+        const vib = aim.bowStringVib > 0 ? Math.sin(time * 65) * aim.bowStringVib * 7 : 0;
+        const nockX = -pullDist + vib;
+        const nockY = 0;
+
+        // Bowstring
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.88)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(topTipX, topTipY);
+        ctx.lineTo(nockX, nockY);
+        ctx.lineTo(botTipX, botTipY);
+        ctx.stroke();
+
+        // Extended bow arm
+        ctx.strokeStyle = '#166534';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(-20, 4);
+        ctx.lineTo(6, 2);
+        ctx.stroke();
+
+        // Curved wooden recurve bow limbs
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(topTipX, topTipY);
+        ctx.quadraticCurveTo(18 - power * 3, -26, 8, 0);
+        ctx.quadraticCurveTo(18 - power * 3, 26, botTipX, botTipY);
+        ctx.stroke();
+
+        // Dark wood grip
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(7, -11);
+        ctx.lineTo(7, 11);
+        ctx.stroke();
+
+        // Nocked arrow (visible when ready to shoot)
+        const hasArrow = state.mode === 'practice' || state.arrowsLeft > 0;
+        if (hasArrow && state.flyingArrows.length === 0) {
+          drawArrowShape(nockX + ARROW_LEN, 0, 0, 0);
+        }
+
+        // Drawing hand
+        ctx.fillStyle = '#f1c27d';
+        ctx.beginPath();
+        ctx.arc(nockX, nockY, 4.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function drawAimAssist() {
+        const aim = state.aiming;
+        if (!aim.active || aim.cancelled || aim.power < 0.08) return;
+
+        const speed = MIN_ARROW_SPEED + (MAX_ARROW_SPEED - MIN_ARROW_SPEED) * aim.power;
+        const pullBack = 16 + aim.power * 28;
+        const startX = BOW_X + Math.cos(aim.angle) * (ARROW_LEN - pullBack);
+        const startY = BOW_Y + Math.sin(aim.angle) * (ARROW_LEN - pullBack);
+
+        // Short dotted ballistic preview near bow (fades smoothly so skill still matters!)
+        const vx0 = Math.cos(aim.angle) * speed;
+        const vy0 = Math.sin(aim.angle) * speed;
+        const steps = state.mode === 'practice' ? 18 : 11;
+        for (let s = 1; s <= steps; s++) {
+          const t = s * 0.036;
+          const px = startX + vx0 * t + 0.5 * (state.wind * 32) * t * t;
+          const py = startY + vy0 * t + 0.5 * GRAVITY * t * t;
+          const alpha = (1 - s / (steps + 1)) * 0.72;
+          ctx.fillStyle = `rgba(253, 224, 71, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 3.2 - s * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Sleek circular power & angle reticle near touch/drag anchor
+        ctx.save();
+        ctx.translate(aim.startX, aim.startY);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 34, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = aim.power > 0.85 ? '#fbbf24' : '#34d399';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * aim.power);
+        ctx.stroke();
+
+        // Power % text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px Tahoma, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(aim.power * 100) + '%', 0, 0);
+
+        // Angle line indicator
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(aim.angle) * 60, Math.sin(aim.angle) * 60);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawTargetZoomPiP() {
+        if (state.screen !== 'PLAYING') return;
+        const pipR = 72;
+        const cx = WORLD_W - 98;
+        const cy = 152;
+
+        ctx.save();
+
+        // Outer glass frame
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.76)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, pipR + 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = state.pipTimer > 0 ? 'rgba(251, 191, 36, 0.85)' : 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 11px Tahoma, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('نمای نزدیک سیبل', cx, cy + pipR + 25);
+
+        // Concentric front-on target face
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(cx, cy, pipR, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let i = RINGS.length - 1; i >= 0; i--) {
+          const ring = RINGS[i];
+          ctx.fillStyle = ring.color;
+          ctx.beginPath();
+          ctx.arc(cx, cy, pipR * ring.maxRatio, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = i <= 2 ? 'rgba(180,83,9,0.4)' : 'rgba(255,255,255,0.22)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        // Crosshair lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy);
+        ctx.lineTo(cx + 8, cy);
+        ctx.moveTo(cx, cy - 8);
+        ctx.lineTo(cx, cy + 8);
+        ctx.stroke();
+
+        // Draw pins for arrows currently stuck in target
+        const scale = pipR / state.target.radius;
+        for (const sa of state.stuckArrows) {
+          if (!sa.targetAttached) continue;
+          const px = cx + (sa.pipX || 0) * scale;
+          const py = cy + sa.relY * scale;
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(px, py, 3.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+
+        // Highlight latest arrow hit
+        if (state.lastHitPip && state.pipTimer > 0) {
+          const px = cx + state.lastHitPip.x * scale;
+          const py = cy + state.lastHitPip.y * scale;
+          const pulse = 5 + Math.sin(performance.now() * 0.015) * 2.5;
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, pulse, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function render(time) {
+        drawBackground(time);
+
+        // Draw target
+        drawTarget(time);
+
+        // Draw stuck arrows
+        for (const sa of state.stuckArrows) {
+          const wob = sa.wobble > 0 ? Math.sin(time * 42) * sa.wobble * 0.12 : 0;
+          drawArrowShape(sa.x, sa.y, sa.angle, wob);
+        }
+
+        // Draw bow & archer
+        drawBowAndArcher(time);
+
+        // Draw aim trajectory & reticle
+        drawAimAssist();
+
+        // Draw flying arrows & air trails
+        for (const a of state.flyingArrows) {
+          if (a.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(a.trail[0].x, a.trail[0].y);
+            for (let i = 1; i < a.trail.length; i++) {
+              ctx.lineTo(a.trail[i].x, a.trail[i].y);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          drawArrowShape(a.x, a.y, a.angle, 0);
+        }
+
+        // Draw particles
+        for (const p of state.particles) {
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Draw floating score popups
+        for (const pop of state.popups) {
+          const alpha = Math.min(1, pop.life / (pop.maxLife * 0.4));
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.textAlign = 'center';
+
+          ctx.font = '900 20px Tahoma, sans-serif';
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillText(pop.text, pop.x + 2, pop.y + 2);
+          ctx.fillStyle = pop.color;
+          ctx.fillText(pop.text, pop.x, pop.y);
+
+          if (pop.subText) {
+            ctx.font = 'bold 13px Tahoma, sans-serif';
+            ctx.fillStyle = '#34d399';
+            ctx.fillText(pop.subText, pop.x, pop.y + 22);
+          }
+          ctx.restore();
+        }
+
+        // Round announcement banner
+        if (state.roundBanner) {
+          const alpha = Math.min(1, state.roundBanner.timer * 1.6);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+          ctx.beginPath();
+          ctx.roundRect(WORLD_W / 2 - 170, 145, 340, 74, 18);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = '900 22px Tahoma, sans-serif';
+          ctx.fillText(state.roundBanner.text, WORLD_W / 2, 177);
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = 'bold 14px Tahoma, sans-serif';
+          ctx.fillText(state.roundBanner.sub, WORLD_W / 2, 203);
+          ctx.restore();
+        }
+
+        // PiP Zoom Target
+        drawTargetZoomPiP();
+
+        ctx.restore();
+      }
+
+      // Main animation loop
+      function loop(now) {
+        const dt = Math.min(0.035, (now - lastTime) / 1000);
+        lastTime = now;
+
+        update(dt);
+        render(now / 1000);
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
