@@ -1,0 +1,3290 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>کماندار حرفه‌ای | بازی تیراندازی با کمان</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: rgba(15, 23, 42, 0.78);
+      --panel-border: rgba(255, 255, 255, 0.16);
+      --gold: #fbbf24;
+      --gold-deep: #d97706;
+      --emerald: #10b981;
+      --rose: #f43f5e;
+      --sky: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.45);
+      --radius-lg: 20px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: "Vazirmatn", "IRANSans", "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
+    }
+
+    #game-root {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    canvas#game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    /* ================= HUD ================= */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 0.25s ease;
+    }
+
+    #hud.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hud-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+    }
+
+    .hud-stat {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    .hud-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .hud-value {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hud-value.gold {
+      color: var(--gold);
+    }
+
+    .hud-value.sky {
+      color: var(--sky);
+    }
+
+    .hud-value.danger {
+      color: var(--rose);
+      animation: pulseText 0.7s infinite alternate;
+    }
+
+    @keyframes pulseText {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Wind Indicator */
+    .wind-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wind-arrow-wrap {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .wind-arrow-wrap svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--sky);
+      transition: transform 0.4s ease;
+    }
+
+    /* Arrows Quiver Indicator */
+    .quiver-dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      direction: ltr;
+    }
+
+    .arrow-pip {
+      width: 8px;
+      height: 22px;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 65%, #ef4444 65%, #dc2626 100%);
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    .arrow-pip.used {
+      opacity: 0.2;
+      transform: scaleY(0.65);
+      background: #94a3b8;
+      box-shadow: none;
+    }
+
+    /* Combo Badge */
+    #combo-badge {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+      display: none;
+      align-items: center;
+      gap: 6px;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    #combo-badge.active {
+      display: inline-flex;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* HUD Buttons */
+    .icon-btn {
+      pointer-events: auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--panel-border);
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+      font-size: 18px;
+    }
+
+    .icon-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: rgba(251, 191, 36, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Practice Controls Bar */
+    #practice-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      padding: 8px 12px;
+      border-radius: 999px;
+      z-index: 12;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 95vw;
+    }
+
+    #practice-bar.visible {
+      display: flex;
+    }
+
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8fafc;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .pill-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .pill-btn.active {
+      background: rgba(251, 191, 36, 0.22);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* Shot History Strip */
+    #shot-strip {
+      position: absolute;
+      top: 74px;
+      right: 18px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      max-width: 340px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .shot-chip {
+      min-width: 30px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+      animation: popIn 0.28s ease;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shot-chip.gold { background: linear-gradient(135deg, #fde047, #eab308); color: #1e293b; border-color: #fef08a; }
+    .shot-chip.red { background: #ef4444; color: #fff; }
+    .shot-chip.blue { background: #0284c7; color: #fff; }
+    .shot-chip.dark { background: #334155; color: #f8fafc; }
+    .shot-chip.white { background: #e2e8f0; color: #0f172a; }
+    .shot-chip.miss { background: rgba(15, 23, 42, 0.72); color: #94a3b8; }
+
+    /* ================= OVERLAYS / MODALS ================= */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.84) 100%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 30;
+      padding: 20px;
+      opacity: 1;
+      transition: opacity 0.28s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 540px;
+      background: linear-gradient(160deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.97));
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 26px;
+      padding: 28px 28px 24px;
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .modal::before {
+      content: "";
+      position: absolute;
+      top: -90px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      height: 160px;
+      background: radial-gradient(circle, rgba(251, 191, 36, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .emblem {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 14px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(234, 88, 12, 0.22));
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 28px rgba(245, 158, 11, 0.22);
+    }
+
+    .modal h1 {
+      font-size: 30px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fff 20%, #fde68a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    .modal .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+      text-align: right;
+    }
+
+    .mode-card {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #fff;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .mode-card:hover {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.65);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .mode-card.primary {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(234, 88, 12, 0.16));
+      border-color: rgba(251, 191, 36, 0.55);
+    }
+
+    .mode-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mode-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .mode-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .mode-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .mode-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.18);
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    .tips-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      text-align: right;
+    }
+
+    .tips-box strong {
+      color: var(--gold);
+    }
+
+    /* Summary / Stage Modal */
+    .stars-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 8px 0 14px;
+      font-size: 34px;
+    }
+
+    .star {
+      filter: grayscale(1) opacity(0.28);
+      transform: scale(0.9);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .star.earned {
+      filter: none;
+      transform: scale(1.1);
+      text-shadow: 0 0 22px rgba(251, 191, 36, 0.75);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px 8px;
+    }
+
+    .stat-box .val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-box .val.gold {
+      color: var(--gold);
+    }
+
+    .stat-box .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .summary-shots {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 18px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      flex: 1;
+      min-width: 130px;
+      padding: 13px 18px;
+      border-radius: 14px;
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24, #ea580c);
+      color: #0f172a;
+      box-shadow: 0 10px 26px rgba(234, 88, 12, 0.35);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 12px 30px rgba(251, 191, 36, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .record-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 720px) {
+      #hud {
+        padding: 10px 10px;
+        gap: 6px;
+      }
+      .hud-card {
+        padding: 6px 10px;
+        min-height: 40px;
+        gap: 7px;
+      }
+      .hud-value {
+        font-size: 16px;
+      }
+      .hud-label {
+        font-size: 10px;
+      }
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+      }
+      #shot-strip {
+        top: 62px;
+        right: 10px;
+      }
+      .modal {
+        padding: 20px 18px;
+      }
+      .modal h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-root">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-group">
+        <div class="hud-card">
+          <div class="hud-stat">
+            <span class="hud-label">امتیاز</span>
+            <span class="hud-value gold" id="hud-score">0</span>
+          </div>
+          <div class="divider-v"></div>
+          <div class="hud-stat">
+            <span class="hud-label" id="hud-stage-label">مرحله</span>
+            <span class="hud-value" id="hud-stage">1</span>
+          </div>
+          <div class="divider-v" id="hud-goal-div"></div>
+          <div class="hud-stat" id="hud-goal-wrap">
+            <span class="hud-label" id="hud-goal-label">حد نصاب</span>
+            <span class="hud-value sky" id="hud-goal">30</span>
+          </div>
+        </div>
+
+        <div class="hud-card" id="hud-quiver-card">
+          <div class="hud-stat">
+            <span class="hud-label">تیرهای باقی‌مانده</span>
+            <div class="quiver-dots" id="hud-quiver"></div>
+          </div>
+        </div>
+
+        <div id="combo-badge">🔥 <span id="combo-text">کمبو ×2</span></div>
+      </div>
+
+      <div class="hud-group">
+        <div class="hud-card wind-box">
+          <div class="wind-arrow-wrap" id="wind-arrow-wrap">
+            <svg viewBox="0 0 24 24" id="wind-arrow-svg">
+              <path d="M4 11h12.17l-4.58-4.59L13 5l7 7-7 7-1.41-1.41L16.17 13H4v-2z"/>
+            </svg>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">سرعت باد</span>
+            <span class="hud-value sky" id="hud-wind">آرام</span>
+          </div>
+        </div>
+
+        <button class="icon-btn" id="btn-sound" title="قطع/وصل صدا" aria-label="صدا">🔊</button>
+        <button class="icon-btn" id="btn-restart" title="شروع مجدد" aria-label="شروع مجدد">↻</button>
+        <button class="icon-btn" id="btn-menu" title="منوی اصلی" aria-label="منو">☰</button>
+      </div>
+    </div>
+
+    <!-- Shot History Chips -->
+    <div id="shot-strip"></div>
+
+    <!-- Practice Controls -->
+    <div id="practice-bar">
+      <button class="pill-btn" id="prac-wind">باد: آرام</button>
+      <button class="pill-btn" id="prac-move">سیبل: ثابت</button>
+      <button class="pill-btn active" id="prac-guide">خط نشانه: روشن</button>
+      <button class="pill-btn" id="prac-dist">فاصله: متوسط</button>
+      <button class="pill-btn" id="prac-clear">پاک کردن تیرها</button>
+    </div>
+
+    <!-- Main Menu Overlay -->
+    <div class="overlay" id="menu-overlay">
+      <div class="modal">
+        <div class="emblem">
+          <svg width="42" height="42" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="26" stroke="#f8fafc" stroke-width="4"/>
+            <circle cx="32" cy="32" r="19" fill="#0284c7"/>
+            <circle cx="32" cy="32" r="12" fill="#ef4444"/>
+            <circle cx="32" cy="32" r="6" fill="#fbbf24"/>
+            <path d="M12 52L46 18" stroke="#fef08a" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M40 16L48 16L48 24" stroke="#fef08a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1>کماندار حرفه‌ای</h1>
+        <p class="subtitle">تیر را بکشید، جهت باد را بسنجید و به مرکز سیبل شلیک کنید!</p>
+
+        <div class="mode-grid">
+          <button class="mode-card primary" data-mode="classic">
+            <div class="mode-info">
+              <div class="mode-icon">🏆</div>
+              <div>
+                <div class="mode-title">مراحل قهرمانی (کلاسیک)</div>
+                <div class="mode-desc">مراحل چالشی با باد، سیبل متحرک و سیب طلایی جایزه</div>
+              </div>
+            </div>
+            <span class="mode-badge" id="best-classic-badge">رکورد: 0</span>
+          </button>
+
+          <button class="mode-card" data-mode="timeattack">
+            <div class="mode-info">
+              <div class="mode-icon">⏱️</div>
+              <div>
+                <div class="mode-title">رکوردزنی ۶۰ ثانیه‌ای</div>
+                <div class="mode-desc">تیر نامحدود در ۶۰ ثانیه — هر خال طلایی ۳+ ثانیه زمان می‌دهد!</div>
+              </div>
+            </div>
+            <span class="mode-badge" id="best-time-badge">رکورد: 0</span>
+          </button>
+
+          <button class="mode-card" data-mode="practice">
+            <div class="mode-info">
+              <div class="mode-icon">🎯</div>
+              <div>
+                <div class="mode-title">تمرین آزاد</div>
+                <div class="mode-desc">تنظیم دلخواه باد، فاصله و حرکت سیبل بدون محدودیت</div>
+              </div>
+            </div>
+            <span class="mode-badge">آزاد</span>
+          </button>
+        </div>
+
+        <div class="tips-box">
+          <strong>راهنمای بازی:</strong> با ماوس یا لمس صفحه به سمت عقب <strong>بکشید</strong> تا کمان کشیده شود و با رها کردن <strong>شلیک</strong> کنید.
+          با کیبورد نیز می‌توانید با کلیدهای <strong>↑ ↓</strong> زاویه را تنظیم کرده و با نگه داشتن <strong>Space</strong> شلیک کنید.
+          برای لغو شلیک، نشانه را نزدیک نقطه شروع برگردانید یا <strong>Esc</strong> بزنید.
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage Clear / Game Over Modal -->
+    <div class="overlay hidden" id="result-overlay">
+      <div class="modal">
+        <div id="result-record-wrap"></div>
+        <h1 id="result-title">مرحله تکمیل شد!</h1>
+        <p class="subtitle" id="result-subtitle">عملکرد عالی در تیراندازی</p>
+
+        <div class="stars-row" id="result-stars">
+          <span class="star">⭐</span>
+          <span class="star">⭐</span>
+          <span class="star">⭐</span>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="val gold" id="res-score">0</div>
+            <div class="lbl" id="res-score-lbl">امتیاز کل</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="res-bullseyes">0</div>
+            <div class="lbl">خال طلایی (۱۰)</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="res-accuracy">0%</div>
+            <div class="lbl">دقت اصابت</div>
+          </div>
+        </div>
+
+        <div class="summary-shots" id="result-shots"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-next-action">مرحله بعد ←</button>
+          <button class="btn btn-secondary" id="btn-result-retry">تکرار بازی</button>
+          <button class="btn btn-secondary" id="btn-result-menu">منوی اصلی</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* =====================================================================
+         1. CONSTANTS & OLYMPIC TARGET DEFINITIONS
+         ===================================================================== */
+      const WORLD_W = 1280;
+      const WORLD_H = 720;
+      const GROUND_Y = 612;
+      const ARCHER_X = 165;
+      const BOW_X = 198;
+      const BOW_Y = 478;
+      const GRAVITY = 520;
+      const MIN_SPEED = 420;
+      const MAX_SPEED = 1190;
+      const MAX_PULL_DIST = 175;
+      const ARROW_LEN = 74;
+
+      // Exact Olympic 10-ring ratios from inner X-ring to outer rim
+      const RINGS = [
+        { maxNorm: 0.06,  score: 10, isX: true,  color: "#fde047", stroke: "#ca8a04", chip: "gold",  label: "خال طلایی! X" },
+        { maxNorm: 0.135, score: 10, isX: false, color: "#facc15", stroke: "#ca8a04", chip: "gold",  label: "طلایی! ۱۰" },
+        { maxNorm: 0.23,  score: 9,  isX: false, color: "#fde047", stroke: "#a16207", chip: "gold",  label: "عالی! ۹" },
+        { maxNorm: 0.33,  score: 8,  isX: false, color: "#ef4444", stroke: "#991b1b", chip: "red",   label: "خوب! ۸" },
+        { maxNorm: 0.43,  score: 7,  isX: false, color: "#dc2626", stroke: "#7f1d1d", chip: "red",   label: "۷ امتیاز" },
+        { maxNorm: 0.54,  score: 6,  isX: false, color: "#0ea5e9", stroke: "#075985", chip: "blue",  label: "۶ امتیاز" },
+        { maxNorm: 0.65,  score: 5,  isX: false, color: "#0284c7", stroke: "#0c4a6e", chip: "blue",  label: "۵ امتیاز" },
+        { maxNorm: 0.76,  score: 4,  isX: false, color: "#334155", stroke: "#0f172a", chip: "dark",  label: "۴ امتیاز" },
+        { maxNorm: 0.87,  score: 3,  isX: false, color: "#1e293b", stroke: "#020617", chip: "dark",  label: "۳ امتیاز" },
+        { maxNorm: 0.94,  score: 2,  isX: false, color: "#f8fafc", stroke: "#94a3b8", chip: "white", label: "۲ امتیاز" },
+        { maxNorm: 1.00,  score: 1,  isX: false, color: "#e2e8f0", stroke: "#64748b", chip: "white", label: "۱ امتیاز" }
+      ];
+
+      const STORAGE_KEYS = {
+        classic: "kamandar_best_classic_v1",
+        timeattack: "kamandar_best_time_v1"
+      };
+
+      /* =====================================================================
+         2. PROCEDURAL WEB AUDIO ENGINE
+         ===================================================================== */
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.enabled = true;
+          this.lastDrawTick = 0;
+        }
+
+        init() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === "suspended") {
+            this.ctx.resume().catch(() => {});
+          }
+        }
+
+        toggle() {
+          this.enabled = !this.enabled;
+          return this.enabled;
+        }
+
+        playDrawTick(power) {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          if (now - this.lastDrawTick < 0.14) return;
+          this.lastDrawTick = now;
+
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(110 + power * 90, now);
+          osc.frequency.exponentialRampToValueAtTime(80 + power * 70, now + 0.045);
+
+          gain.gain.setValueAtTime(0.035, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.055);
+        }
+
+        playRelease(power) {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          // Bowstring twang
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(175 + power * 110, now);
+          osc.frequency.exponentialRampToValueAtTime(62, now + 0.22);
+
+          gain.gain.setValueAtTime(0.22 * (0.5 + 0.5 * power), now);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.24);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+
+          // Arrow air whoosh (filtered noise)
+          const bufLen = Math.floor(this.ctx.sampleRate * 0.22);
+          const buffer = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufLen; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+          }
+
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(900 + power * 900, now);
+          filter.frequency.exponentialRampToValueAtTime(420, now + 0.2);
+          filter.Q.value = 1.6;
+
+          const nGain = this.ctx.createGain();
+          nGain.gain.setValueAtTime(0.16 * (0.4 + 0.6 * power), now);
+          nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+          noise.connect(filter);
+          filter.connect(nGain);
+          nGain.connect(this.ctx.destination);
+          noise.start(now);
+        }
+
+        playTargetHit(score, isX, combo) {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          // Straw thud
+          const thud = this.ctx.createOscillator();
+          const tGain = this.ctx.createGain();
+          thud.type = "sine";
+          thud.frequency.setValueAtTime(135, now);
+          thud.frequency.exponentialRampToValueAtTime(42, now + 0.11);
+          tGain.gain.setValueAtTime(0.32, now);
+          tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          thud.connect(tGain);
+          tGain.connect(this.ctx.destination);
+          thud.start(now);
+          thud.stop(now + 0.13);
+
+          // Musical chime scaled by score & combo
+          const baseFreq = 330 + score * 38 + Math.min(combo, 6) * 24;
+          const notes = isX ? [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2]
+            : score >= 9 ? [baseFreq, baseFreq * 1.25, baseFreq * 1.5]
+            : score >= 7 ? [baseFreq, baseFreq * 1.25]
+            : [baseFreq];
+
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            const start = now + idx * 0.055;
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(isX ? 0.16 : 0.11, start + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0008, start + (isX ? 0.42 : 0.26));
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.45);
+          });
+        }
+
+        playBonusHit() {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          [587.33, 783.99, 1046.5, 1318.5].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            const t = now + idx * 0.045;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.14, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.32);
+          });
+        }
+
+        playWoodHit() {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.exponentialRampToValueAtTime(95, now + 0.08);
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 600;
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        }
+
+        playGroundHit() {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(95, now);
+          osc.frequency.exponentialRampToValueAtTime(34, now + 0.12);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        }
+
+        playFanfare(win) {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const seq = win ? [523.25, 659.25, 783.99, 1046.5] : [392.0, 349.23, 311.13, 261.63];
+          seq.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            const t = now + i * 0.1;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.14, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.48);
+          });
+        }
+      }
+
+      /* =====================================================================
+         3. DOM REFERENCES & CANVAS VIEWPORT
+         ===================================================================== */
+      const canvas = document.getElementById("game-canvas");
+      const ctx = canvas.getContext("2d");
+
+      const ui = {
+        hud: document.getElementById("hud"),
+        score: document.getElementById("hud-score"),
+        stageLabel: document.getElementById("hud-stage-label"),
+        stage: document.getElementById("hud-stage"),
+        goalDiv: document.getElementById("hud-goal-div"),
+        goalWrap: document.getElementById("hud-goal-wrap"),
+        goalLabel: document.getElementById("hud-goal-label"),
+        goal: document.getElementById("hud-goal"),
+        quiverCard: document.getElementById("hud-quiver-card"),
+        quiver: document.getElementById("hud-quiver"),
+        comboBadge: document.getElementById("combo-badge"),
+        comboText: document.getElementById("combo-text"),
+        windArrowWrap: document.getElementById("wind-arrow-wrap"),
+        windArrowSvg: document.getElementById("wind-arrow-svg"),
+        windText: document.getElementById("hud-wind"),
+        shotStrip: document.getElementById("shot-strip"),
+        btnSound: document.getElementById("btn-sound"),
+        btnRestart: document.getElementById("btn-restart"),
+        btnMenu: document.getElementById("btn-menu"),
+        menuOverlay: document.getElementById("menu-overlay"),
+        resultOverlay: document.getElementById("result-overlay"),
+        bestClassic: document.getElementById("best-classic-badge"),
+        bestTime: document.getElementById("best-time-badge"),
+        practiceBar: document.getElementById("practice-bar"),
+        pracWind: document.getElementById("prac-wind"),
+        pracMove: document.getElementById("prac-move"),
+        pracGuide: document.getElementById("prac-guide"),
+        pracDist: document.getElementById("prac-dist"),
+        pracClear: document.getElementById("prac-clear"),
+        resRecordWrap: document.getElementById("result-record-wrap"),
+        resTitle: document.getElementById("result-title"),
+        resSubtitle: document.getElementById("result-subtitle"),
+        resStars: document.getElementById("result-stars"),
+        resScore: document.getElementById("res-score"),
+        resScoreLbl: document.getElementById("res-score-lbl"),
+        resBullseyes: document.getElementById("res-bullseyes"),
+        resAccuracy: document.getElementById("res-accuracy"),
+        resShots: document.getElementById("result-shots"),
+        btnNextAction: document.getElementById("btn-next-action"),
+        btnResultRetry: document.getElementById("btn-result-retry"),
+        btnResultMenu: document.getElementById("btn-result-menu")
+      };
+
+      const sound = new SoundEngine();
+
+      const view = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0
+      };
+
+      function resizeCanvas() {
+        view.width = window.innerWidth;
+        view.height = window.innerHeight;
+        view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(view.width * view.dpr);
+        canvas.height = Math.round(view.height * view.dpr);
+        view.scale = Math.min(view.width / WORLD_W, view.height / WORLD_H);
+        view.offsetX = (view.width - WORLD_W * view.scale) / 2;
+        view.offsetY = (view.height - WORLD_H * view.scale) / 2;
+      }
+
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      function clientToWorld(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (clientX - rect.left - view.offsetX) / view.scale,
+          y: (clientY - rect.top - view.offsetY) / view.scale
+        };
+      }
+
+      /* =====================================================================
+         4. GAME STATE & STAGE CONFIGURATION
+         ===================================================================== */
+      const state = {
+        screen: "menu", // 'menu' | 'playing' | 'result'
+        mode: "classic", // 'classic' | 'timeattack' | 'practice'
+        stage: 1,
+        totalScore: 0,
+        stageScore: 0,
+        stageGoal: 30,
+        arrowsTotal: 6,
+        arrowsLeft: 6,
+        arrowsFired: 0,
+        arrowsHit: 0,
+        bullseyes: 0,
+        streak: 0,
+        bestStreak: 0,
+        stageShots: [],
+        timeLeft: 60,
+        windMps: 0, // -8 to +8 m/s (+ = tailwind right, - = headwind left)
+        targetWindMps: 0,
+        showGuide: true,
+        guideRatio: 0.42,
+        hasShotOnce: false,
+        pendingEndTimer: 0,
+        stagePassed: false,
+
+        // Time Attack target shift delay (managed inside update loop)
+        timeAttackShiftTimer: 0,
+        stageStartScore: 0,
+
+        // Practice settings
+        pracWindLevel: 0, // 0 calm, 1 medium, 2 strong
+        pracMove: false,
+        pracDistLevel: 1, // 0 close, 1 medium, 2 far
+
+        // Target object
+        target: {
+          x: 920,
+          baseX: 920,
+          y: 460,
+          baseY: 460,
+          radius: 64,
+          moveAmpY: 0,
+          moveSpeedY: 0,
+          moveAmpX: 0,
+          moveSpeedX: 0,
+          phase: 0,
+          hitRecoil: 0
+        },
+
+        // Optional Bonus Apple / Balloon
+        bonus: null,
+
+        // Active arrows in flight & embedded arrows
+        arrows: [],
+
+        // Visual FX
+        particles: [],
+        popups: [],
+        clouds: [],
+        leaves: [],
+        shakeTime: 0,
+        shakeIntensity: 0,
+
+        // Hit-cam zoom scope
+        hitCam: {
+          timer: 0,
+          maxTimer: 2.8,
+          lastHit: null,
+          hits: [] // { nx, ny, score, isX }
+        },
+
+        // Aiming / Drawing state
+        aim: {
+          active: false,
+          pointerId: null,
+          startX: 0,
+          startY: 0,
+          curX: 0,
+          curY: 0,
+          angle: -0.22,
+          power: 0,
+          holdTime: 0,
+          swayOffset: 0,
+          cancelled: false
+        },
+
+        // Keyboard aiming state
+        keys: {
+          up: false,
+          down: false,
+          space: false,
+          charging: false,
+          chargeDir: 1
+        },
+
+        elapsed: 0
+      };
+
+      // Initialize ambient clouds & floating wind leaves
+      function initAmbience() {
+        state.clouds = [];
+        for (let i = 0; i < 7; i++) {
+          state.clouds.push({
+            x: Math.random() * (WORLD_W + 400) - 200,
+            y: 65 + Math.random() * 175,
+            scale: 0.6 + Math.random() * 0.9,
+            speed: 8 + Math.random() * 12,
+            opacity: 0.45 + Math.random() * 0.35
+          });
+        }
+
+        state.leaves = [];
+        for (let i = 0; i < 24; i++) {
+          state.leaves.push({
+            x: Math.random() * WORLD_W,
+            y: 120 + Math.random() * (GROUND_Y - 140),
+            size: 2.5 + Math.random() * 3.5,
+            phase: Math.random() * Math.PI * 2,
+            speedY: 10 + Math.random() * 18,
+            tint: Math.random() > 0.5 ? "#fde68a" : "#86efac"
+          });
+        }
+      }
+
+      initAmbience();
+
+      function getBest(mode) {
+        try {
+          return parseInt(localStorage.getItem(STORAGE_KEYS[mode]) || "0", 10) || 0;
+        } catch {
+          return 0;
+        }
+      }
+
+      function saveBest(mode, val) {
+        if (!STORAGE_KEYS[mode]) return false;
+        const prev = getBest(mode);
+        if (val > prev) {
+          try { localStorage.setItem(STORAGE_KEYS[mode], String(val)); } catch {}
+          return true;
+        }
+        return false;
+      }
+
+      function refreshMenuRecords() {
+        ui.bestClassic.textContent = `رکورد: ${toPersianDigits(getBest("classic"))}`;
+        ui.bestTime.textContent = `رکورد: ${toPersianDigits(getBest("timeattack"))}`;
+      }
+
+      function toPersianDigits(num) {
+        const digits = "۰۱۲۳۴۵۶۷۸۹";
+        return String(num).replace(/\d/g, d => digits[d]);
+      }
+
+      /* =====================================================================
+         5. STAGE & MODE SETUP
+         ===================================================================== */
+      function configureStage(stageNum) {
+        state.stage = stageNum;
+        state.stageScore = 0;
+        state.stageStartScore = state.totalScore;
+        state.stageShots = [];
+        state.arrows = [];
+        state.hitCam.hits = [];
+        state.hitCam.timer = 0;
+        state.pendingEndTimer = 0;
+        state.timeAttackShiftTimer = 0;
+        state.stagePassed = false;
+        ui.shotStrip.innerHTML = "";
+
+        if (state.mode === "classic") {
+          state.arrowsTotal = 6;
+          state.arrowsLeft = 6;
+          state.showGuide = stageNum <= 4;
+          state.guideRatio = Math.max(0.18, 0.44 - (stageNum - 1) * 0.06);
+
+          // Progressive difficulty curve
+          const dist = Math.min(1110, 810 + (stageNum - 1) * 58);
+          const radius = Math.max(46, 65 - (stageNum - 1) * 3);
+          const goal = Math.min(50, 28 + (stageNum - 1) * 4);
+          state.stageGoal = goal;
+
+          state.target = {
+            x: dist,
+            baseX: dist,
+            y: 455 - (stageNum >= 2 ? (Math.random() * 40 - 20) : 0),
+            baseY: 455,
+            radius,
+            moveAmpY: stageNum >= 3 ? Math.min(95, 36 + (stageNum - 3) * 18) : 0,
+            moveSpeedY: stageNum >= 3 ? Math.min(2.1, 1.0 + (stageNum - 3) * 0.24) : 0,
+            moveAmpX: stageNum >= 5 ? Math.min(60, 22 + (stageNum - 5) * 12) : 0,
+            moveSpeedX: stageNum >= 5 ? 0.9 : 0,
+            phase: Math.random() * Math.PI * 2,
+            hitRecoil: 0
+          };
+          state.target.baseY = state.target.y;
+
+          // Wind strength scales by stage
+          if (stageNum === 1) {
+            setWind(0);
+          } else {
+            const maxW = Math.min(7.5, 1.5 + (stageNum - 1) * 1.15);
+            const dir = Math.random() < 0.5 ? -1 : 1;
+            const mag = +(Math.max(1.2, Math.random() * maxW)).toFixed(1);
+            setWind(dir * mag);
+          }
+
+          // Spawn golden apple bonus on stage 2+
+          if (stageNum >= 2) {
+            spawnBonus(stageNum % 2 === 0 ? "apple" : "balloon");
+          } else {
+            state.bonus = null;
+          }
+        } else if (state.mode === "timeattack") {
+          state.arrowsTotal = 999;
+          state.arrowsLeft = 999;
+          state.timeLeft = 60;
+          state.showGuide = true;
+          state.guideRatio = 0.34;
+          randomizeTimeAttackTarget(true);
+        } else if (state.mode === "practice") {
+          state.arrowsTotal = 999;
+          state.arrowsLeft = 999;
+          applyPracticeSettings();
+        }
+
+        updateHUD();
+      }
+
+      function randomizeTimeAttackTarget(first) {
+        const dist = first ? 880 : 720 + Math.random() * 390;
+        const baseY = 330 + Math.random() * 175;
+        const moving = !first && Math.random() < 0.6;
+        state.target = {
+          x: dist,
+          baseX: dist,
+          y: baseY,
+          baseY,
+          radius: 56,
+          moveAmpY: moving ? 35 + Math.random() * 55 : 0,
+          moveSpeedY: moving ? 1.0 + Math.random() * 1.1 : 0,
+          moveAmpX: 0,
+          moveSpeedX: 0,
+          phase: Math.random() * Math.PI * 2,
+          hitRecoil: 0
+        };
+        const wind = +((Math.random() * 10 - 5)).toFixed(1);
+        setWind(Math.abs(wind) < 0.8 ? 0 : wind);
+
+        if (!first && Math.random() < 0.45) {
+          spawnBonus("balloon");
+        } else {
+          state.bonus = null;
+        }
+      }
+
+      function applyPracticeSettings() {
+        const dists = [740, 930, 1110];
+        const dist = dists[state.pracDistLevel];
+        state.target.baseX = dist;
+        state.target.x = dist;
+        state.target.baseY = 450;
+        if (!state.pracMove) {
+          state.target.y = state.target.baseY;
+        }
+        state.target.radius = 60;
+        state.target.moveAmpY = state.pracMove ? 75 : 0;
+        state.target.moveSpeedY = state.pracMove ? 1.35 : 0;
+        state.target.moveAmpX = 0;
+
+        if (state.pracWindLevel === 0) setWind(0);
+        else if (state.pracWindLevel === 1) setWind((Math.random() < 0.5 ? -1 : 1) * 3.0);
+        else setWind((Math.random() < 0.5 ? -1 : 1) * 6.5);
+
+        state.bonus = {
+          type: "apple",
+          alive: true,
+          radius: 17,
+          offsetY: -state.target.radius - 18,
+          x: state.target.x,
+          y: state.target.y - state.target.radius - 18,
+          bobPhase: 0
+        };
+        updatePracticeButtons();
+      }
+
+      function spawnBonus(type) {
+        if (type === "apple") {
+          state.bonus = {
+            type: "apple",
+            alive: true,
+            radius: 17,
+            offsetY: -state.target.radius - 18,
+            x: state.target.x,
+            y: state.target.y - state.target.radius - 18,
+            bobPhase: 0
+          };
+        } else {
+          state.bonus = {
+            type: "balloon",
+            alive: true,
+            radius: 22,
+            x: Math.max(540, state.target.baseX - 180 - Math.random() * 120),
+            baseY: 220 + Math.random() * 140,
+            y: 260,
+            bobPhase: Math.random() * Math.PI * 2
+          };
+        }
+      }
+
+      function setWind(mps) {
+        state.targetWindMps = mps;
+        state.windMps = mps;
+        updateWindHUD();
+      }
+
+      function startGame(mode) {
+        sound.init();
+        state.mode = mode;
+        state.screen = "playing";
+        state.totalScore = 0;
+        state.arrowsFired = 0;
+        state.arrowsHit = 0;
+        state.bullseyes = 0;
+        state.streak = 0;
+        state.bestStreak = 0;
+        state.hasShotOnce = false;
+        state.aim.active = false;
+        state.aim.power = 0;
+        state.particles = [];
+        state.popups = [];
+
+        ui.menuOverlay.classList.add("hidden");
+        ui.resultOverlay.classList.add("hidden");
+        ui.hud.classList.remove("hidden");
+        ui.practiceBar.classList.toggle("visible", mode === "practice");
+
+        configureStage(1);
+      }
+
+      /* =====================================================================
+         6. HUD UPDATES
+         ===================================================================== */
+      function updateHUD() {
+        ui.score.textContent = toPersianDigits(state.mode === "classic" ? state.totalScore : state.totalScore);
+
+        if (state.mode === "classic") {
+          ui.stageLabel.textContent = "مرحله";
+          ui.stage.textContent = toPersianDigits(state.stage);
+          ui.stage.className = "hud-value";
+          ui.goalDiv.style.display = "";
+          ui.goalWrap.style.display = "";
+          ui.goalLabel.textContent = "امتیاز مرحله / نصاب";
+          ui.goal.textContent = `${toPersianDigits(state.stageScore)} / ${toPersianDigits(state.stageGoal)}`;
+          ui.goal.className = state.stageScore >= state.stageGoal ? "hud-value gold" : "hud-value sky";
+          ui.quiverCard.style.display = "";
+
+          // Render quiver pips
+          let html = "";
+          for (let i = 0; i < state.arrowsTotal; i++) {
+            const used = i >= state.arrowsLeft;
+            html += `<span class="arrow-pip${used ? " used" : ""}"></span>`;
+          }
+          ui.quiver.innerHTML = html;
+        } else if (state.mode === "timeattack") {
+          ui.stageLabel.textContent = "زمان";
+          const secs = Math.max(0, Math.ceil(state.timeLeft));
+          ui.stage.textContent = `${toPersianDigits(secs)} ثانیه`;
+          ui.stage.className = secs <= 10 ? "hud-value danger" : "hud-value sky";
+          ui.goalDiv.style.display = "";
+          ui.goalWrap.style.display = "";
+          ui.goalLabel.textContent = "رکورد";
+          ui.goal.textContent = toPersianDigits(Math.max(getBest("timeattack"), state.totalScore));
+          ui.goal.className = "hud-value gold";
+          ui.quiverCard.style.display = "none";
+        } else {
+          ui.stageLabel.textContent = "حالت";
+          ui.stage.textContent = "تمرین";
+          ui.stage.className = "hud-value sky";
+          ui.goalDiv.style.display = "none";
+          ui.goalWrap.style.display = "none";
+          ui.quiverCard.style.display = "none";
+        }
+
+        if (state.streak >= 2) {
+          ui.comboBadge.classList.add("active");
+          ui.comboText.textContent = `کمبو ×${toPersianDigits(state.streak)}`;
+        } else {
+          ui.comboBadge.classList.remove("active");
+        }
+
+        updateWindHUD();
+      }
+
+      function updateWindHUD() {
+        const w = state.windMps;
+        const absW = Math.abs(w);
+        if (absW < 0.3) {
+          ui.windText.textContent = "آرام";
+          ui.windArrowWrap.style.opacity = "0.45";
+          ui.windArrowSvg.style.transform = "rotate(0deg) scale(0.75)";
+        } else {
+          const dirLabel = w > 0 ? "موافق" : "مخالف";
+          ui.windText.textContent = `${toPersianDigits(absW.toFixed(1))} ${dirLabel}`;
+          ui.windArrowWrap.style.opacity = "1";
+          // SVG arrow points right by default; flip 180deg for left headwind
+          ui.windArrowSvg.style.transform = w > 0 ? "rotate(0deg)" : "rotate(180deg)";
+        }
+      }
+
+      function addShotChip(score, isX, chipClass) {
+        const chip = document.createElement("span");
+        chip.className = `shot-chip ${chipClass}`;
+        chip.textContent = isX ? "X" : score > 0 ? toPersianDigits(score) : "—";
+        ui.shotStrip.appendChild(chip);
+        if (ui.shotStrip.children.length > 10) {
+          ui.shotStrip.removeChild(ui.shotStrip.firstChild);
+        }
+      }
+
+      function updatePracticeButtons() {
+        const wNames = ["باد: آرام", "باد: متوسط", "باد: شدید"];
+        const dNames = ["فاصله: نزدیک", "فاصله: متوسط", "فاصله: دور"];
+        ui.pracWind.textContent = wNames[state.pracWindLevel];
+        ui.pracWind.classList.toggle("active", state.pracWindLevel > 0);
+        ui.pracMove.textContent = state.pracMove ? "سیبل: متحرک" : "سیبل: ثابت";
+        ui.pracMove.classList.toggle("active", state.pracMove);
+        ui.pracGuide.textContent = state.showGuide ? "خط نشانه: روشن" : "خط نشانه: خاموش";
+        ui.pracGuide.classList.toggle("active", state.showGuide);
+        ui.pracDist.textContent = dNames[state.pracDistLevel];
+      }
+
+      /* =====================================================================
+         7. INPUT HANDLING (MOUSE, TOUCH & KEYBOARD)
+         ===================================================================== */
+      function canShoot() {
+        if (state.screen !== "playing") return false;
+        if (state.mode === "classic" && state.arrowsLeft <= 0) return false;
+        if (state.mode === "timeattack" && state.timeLeft <= 0) return false;
+        // Prevent shooting while another arrow is mid-air in classic mode (cleaner scoring flow)
+        if (state.mode === "classic" && state.arrows.some(a => a.state === "flying")) return false;
+        return true;
+      }
+
+      canvas.addEventListener("pointerdown", (e) => {
+        if (e.button === 2) {
+          cancelAim();
+          return;
+        }
+        sound.init();
+        if (!canShoot()) return;
+
+        const pt = clientToWorld(e.clientX, e.clientY);
+        state.aim.active = true;
+        state.aim.pointerId = e.pointerId;
+        state.aim.startX = pt.x;
+        state.aim.startY = pt.y;
+        state.aim.curX = pt.x;
+        state.aim.curY = pt.y;
+        state.aim.power = 0;
+        state.aim.holdTime = 0;
+        state.aim.cancelled = false;
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      canvas.addEventListener("pointermove", (e) => {
+        if (!state.aim.active || e.pointerId !== state.aim.pointerId) return;
+        const pt = clientToWorld(e.clientX, e.clientY);
+        state.aim.curX = pt.x;
+        state.aim.curY = pt.y;
+
+        const dx = state.aim.startX - pt.x;
+        const dy = state.aim.startY - pt.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 14) {
+          state.aim.power = 0;
+          return;
+        }
+
+        // Clamp aiming angle between -74 deg (up) and +32 deg (down)
+        let angle = Math.atan2(dy, dx);
+        // If dragged forward instead of backward, reflect smoothly or clamp
+        if (dx < -10) {
+          angle = dy < 0 ? -1.28 : 0.55;
+        }
+        angle = Math.max(-1.28, Math.min(0.55, angle));
+        state.aim.angle = angle;
+
+        const prevPower = state.aim.power;
+        state.aim.power = Math.min(1, dist / MAX_PULL_DIST);
+
+        if (Math.floor(state.aim.power * 6) > Math.floor(prevPower * 6)) {
+          sound.playDrawTick(state.aim.power);
+        }
+      });
+
+      function releaseShot(e) {
+        if (!state.aim.active) return;
+        if (e && e.pointerId !== state.aim.pointerId) return;
+        if (e && canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+
+        const power = state.aim.power;
+        const angle = state.aim.angle + state.aim.swayOffset;
+        state.aim.active = false;
+        state.aim.pointerId = null;
+
+        if (!state.aim.cancelled && power >= 0.14 && canShoot()) {
+          fireArrow(angle, power);
+        }
+        state.aim.power = 0;
+      }
+
+      function cancelAim() {
+        state.aim.active = false;
+        state.aim.cancelled = true;
+        state.aim.power = 0;
+        state.keys.charging = false;
+      }
+
+      canvas.addEventListener("pointerup", releaseShot);
+      canvas.addEventListener("pointercancel", cancelAim);
+      canvas.addEventListener("contextmenu", (e) => { e.preventDefault(); cancelAim(); });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Escape") {
+          if (state.aim.active || state.keys.charging) {
+            cancelAim();
+          } else if (state.screen === "playing") {
+            openMenu();
+          }
+          return;
+        }
+        if (e.code === "KeyM") {
+          toggleSound();
+          return;
+        }
+        if (e.code === "KeyR" && state.screen === "playing") {
+          startGame(state.mode);
+          return;
+        }
+        if (state.screen !== "playing") return;
+
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          state.keys.up = true;
+          e.preventDefault();
+        } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+          state.keys.down = true;
+          e.preventDefault();
+        } else if (e.code === "Space") {
+          e.preventDefault();
+          sound.init();
+          if (!state.keys.space && canShoot()) {
+            state.keys.space = true;
+            state.keys.charging = true;
+            state.keys.chargeDir = 1;
+            state.aim.power = 0.16;
+            state.aim.holdTime = 0;
+          }
+        }
+      });
+
+      window.addEventListener("keyup", (e) => {
+        if (e.code === "ArrowUp" || e.code === "KeyW") state.keys.up = false;
+        if (e.code === "ArrowDown" || e.code === "KeyS") state.keys.down = false;
+        if (e.code === "Space") {
+          state.keys.space = false;
+          if (state.keys.charging) {
+            state.keys.charging = false;
+            const power = state.aim.power;
+            const angle = state.aim.angle + state.aim.swayOffset;
+            state.aim.power = 0;
+            if (power >= 0.14 && canShoot()) {
+              fireArrow(angle, power);
+            }
+          }
+        }
+      });
+
+      /* =====================================================================
+         8. ARROW LAUNCH, PHYSICS & SCORING
+         ===================================================================== */
+      function getArrowLaunchOrigin(angle, power) {
+        const shoulderX = ARCHER_X + 6;
+        const shoulderY = 486;
+        const bowDist = 36;
+        const bx = shoulderX + Math.cos(angle) * bowDist;
+        const by = shoulderY + Math.sin(angle) * bowDist;
+        const localTipX = (-12 - power * 36) + ARROW_LEN;
+        return {
+          x: bx + Math.cos(angle) * localTipX,
+          y: by + Math.sin(angle) * localTipX
+        };
+      }
+
+      function fireArrow(angle, power) {
+        state.hasShotOnce = true;
+        const speed = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * power;
+        const origin = getArrowLaunchOrigin(angle, power);
+
+        const arrow = {
+          x: origin.x,
+          y: origin.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          angle,
+          state: "flying", // 'flying' | 'stuck_target' | 'stuck_wood' | 'stuck_ground' | 'out'
+          wobbleTime: 0,
+          wobbleAmp: 0,
+          relX: 0,
+          relY: 0,
+          trail: [],
+          scored: false,
+          hitBonus: false
+        };
+
+        state.arrows.push(arrow);
+        // Keep max 28 embedded arrows in practice/timeattack for crisp performance
+        if (state.arrows.length > 28) {
+          const idx = state.arrows.findIndex(a => a.state !== "flying");
+          if (idx !== -1) state.arrows.splice(idx, 1);
+        }
+
+        state.arrowsFired++;
+        if (state.mode === "classic") {
+          state.arrowsLeft = Math.max(0, state.arrowsLeft - 1);
+        }
+
+        sound.playRelease(power);
+        updateHUD();
+      }
+
+      function evaluateRing(dy, radius) {
+        const norm = Math.abs(dy) / radius;
+        for (const ring of RINGS) {
+          if (norm <= ring.maxNorm) return { ring, norm };
+        }
+        return null;
+      }
+
+      function spawnParticles(x, y, count, colors, speedMin, speedMax, gravityMul = 1) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const spd = speedMin + Math.random() * (speedMax - speedMin);
+          state.particles.push({
+            x,
+            y,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd - 45,
+            size: 2.5 + Math.random() * 4.5,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 0.45 + Math.random() * 0.55,
+            maxLife: 1.0,
+            gravityMul
+          });
+        }
+      }
+
+      function spawnPopup(x, y, text, color, big = false) {
+        state.popups.push({
+          x,
+          y,
+          text,
+          color,
+          big,
+          life: 1.45,
+          maxLife: 1.45
+        });
+      }
+
+      function triggerShake(intensity, duration) {
+        state.shakeIntensity = Math.max(state.shakeIntensity, intensity);
+        state.shakeTime = Math.max(state.shakeTime, duration);
+      }
+
+      function handleTargetHit(arrow, hitX, hitY) {
+        const tgt = state.target;
+        const dy = hitY - tgt.y;
+        const res = evaluateRing(dy, tgt.radius);
+        if (!res) return;
+
+        const { ring, norm } = res;
+        arrow.state = "stuck_target";
+        arrow.x = hitX;
+        arrow.y = hitY;
+        arrow.relX = hitX - tgt.x;
+        arrow.relY = hitY - tgt.y;
+        arrow.wobbleTime = 0.55;
+        arrow.wobbleAmp = 0.095;
+        arrow.scored = true;
+        tgt.hitRecoil = 9;
+
+        state.arrowsHit++;
+
+        // Streak & bonus logic
+        if (ring.score >= 8) {
+          state.streak++;
+          if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+        } else {
+          state.streak = 0;
+        }
+
+        let points = ring.score;
+        let extraNote = "";
+
+        if (ring.isX) {
+          points += 2;
+          state.bullseyes++;
+          extraNote = " (+۲ جایزه مرکز)";
+        } else if (ring.score === 10) {
+          state.bullseyes++;
+        }
+
+        if (state.streak >= 3 && ring.score >= 8) {
+          const comboBonus = Math.min(5, state.streak - 1);
+          points += comboBonus;
+          extraNote += ` 🔥+${toPersianDigits(comboBonus)}`;
+        }
+
+        state.totalScore += points;
+        state.stageScore += points;
+        state.stageShots.push({ score: ring.score, isX: ring.isX, chip: ring.chip, points });
+        addShotChip(ring.score, ring.isX, ring.chip);
+
+        // Time Attack bullseye bonus time + schedule target reposition
+        if (state.mode === "timeattack") {
+          if (ring.score === 10) {
+            state.timeLeft += 3;
+            spawnPopup(hitX - 30, hitY - 58, "+۳ ثانیه زمان! ⏱️", "#38bdf8", false);
+          }
+          state.timeAttackShiftTimer = 0.52;
+        } else if (state.mode === "classic" && state.stage >= 4 && state.arrowsLeft > 0) {
+          // Slight wind gust shift on higher stages
+          const shift = +((Math.random() * 2.4 - 1.2)).toFixed(1);
+          const nextWind = Math.max(-7.5, Math.min(7.5, +(state.windMps + shift).toFixed(1)));
+          setWind(nextWind);
+        }
+
+        // Update Hit Cam
+        const maxHorizontal = Math.sqrt(Math.max(0, ring.maxNorm * ring.maxNorm - norm * norm)) * 0.65;
+        const nx = (Math.random() * 2 - 1) * Math.min(0.22, maxHorizontal);
+        const ny = dy / tgt.radius;
+        state.hitCam.lastHit = { nx, ny, score: ring.score, isX: ring.isX, label: ring.label };
+        state.hitCam.hits.push({ nx, ny, score: ring.score, isX: ring.isX });
+        if (state.hitCam.hits.length > 10) state.hitCam.hits.shift();
+        state.hitCam.timer = state.hitCam.maxTimer;
+
+        // Juice: Sound, Particles, Screen Shake, Floating Popup
+        sound.playTargetHit(ring.score, ring.isX, state.streak);
+
+        if (ring.score === 10) {
+          spawnParticles(hitX, hitY, ring.isX ? 34 : 22, ["#fde047", "#f59e0b", "#ffffff", "#fb923c"], 90, 320, 0.7);
+          triggerShake(ring.isX ? 8 : 5, 0.24);
+          spawnPopup(hitX - 24, hitY - 26, `${ring.label}${extraNote}`, "#fde047", true);
+        } else if (ring.score >= 8) {
+          spawnParticles(hitX, hitY, 14, ["#ef4444", "#fde047", "#ffffff"], 70, 220, 0.9);
+          triggerShake(3, 0.14);
+          spawnPopup(hitX - 20, hitY - 22, `+${toPersianDigits(points)}${extraNote}`, "#fca5a5", false);
+        } else {
+          spawnParticles(hitX, hitY, 10, ["#e2e8f0", "#d6b888", "#94a3b8"], 50, 160, 1.0);
+          spawnPopup(hitX - 18, hitY - 20, `+${toPersianDigits(points)}`, "#f8fafc", false);
+        }
+
+        updateHUD();
+        checkClassicStageEnd();
+      }
+
+      function handleMiss(arrow, reason, px, py) {
+        if (arrow.scored) return;
+        arrow.scored = true;
+        state.streak = 0;
+        state.stageShots.push({ score: 0, isX: false, chip: "miss", points: 0 });
+        addShotChip(0, false, "miss");
+
+        if (reason === "wood") {
+          sound.playWoodHit();
+          spawnParticles(px, py, 10, ["#92400e", "#d97706", "#fde68a"], 50, 170, 1.1);
+          spawnPopup(px - 20, py - 24, "برخورد به پایه!", "#fdba74", false);
+        } else if (reason === "ground") {
+          sound.playGroundHit();
+          spawnParticles(px, py, 12, ["#4d7c0f", "#65a30d", "#78350f"], 45, 160, 1.2);
+          spawnPopup(px, py - 28, "خطا!", "#cbd5e1", false);
+        } else {
+          spawnPopup(WORLD_W - 140, 260, "خارج از میدان!", "#94a3b8", false);
+        }
+
+        updateHUD();
+        checkClassicStageEnd();
+      }
+
+      function checkClassicStageEnd() {
+        if (state.mode !== "classic") return;
+        const flying = state.arrows.some(a => a.state === "flying");
+        if (state.arrowsLeft === 0 && !flying && state.pendingEndTimer === 0) {
+          state.pendingEndTimer = 1.15;
+        }
+      }
+
+      function showResultModal() {
+        state.screen = "result";
+        ui.resultOverlay.classList.remove("hidden");
+
+        const acc = state.arrowsFired > 0 ? Math.round((state.arrowsHit / state.arrowsFired) * 100) : 0;
+        let isNewRecord = false;
+        let stars = 0;
+
+        if (state.mode === "classic") {
+          const passed = state.stageScore >= state.stageGoal;
+          state.stagePassed = passed;
+          isNewRecord = saveBest("classic", state.totalScore);
+
+          if (passed) {
+            const ratio = state.stageScore / Math.max(1, state.arrowsTotal * 10);
+            stars = ratio >= 0.82 ? 3 : ratio >= 0.65 ? 2 : 1;
+            ui.resTitle.textContent = `مرحله ${toPersianDigits(state.stage)} با موفقیت تمام شد!`;
+            ui.resSubtitle.textContent = `امتیاز مرحله: ${toPersianDigits(state.stageScore)} از حد نصاب ${toPersianDigits(state.stageGoal)}`;
+            ui.btnNextAction.textContent = `مرحله ${toPersianDigits(state.stage + 1)} ←`;
+            ui.btnNextAction.style.display = "";
+            ui.btnResultRetry.textContent = "شروع از ابتدا";
+            sound.playFanfare(true);
+          } else {
+            stars = 0;
+            ui.resTitle.textContent = `مرحله ${toPersianDigits(state.stage)} ناتمام ماند`;
+            ui.resSubtitle.textContent = `برای صعود به ${toPersianDigits(state.stageGoal)} امتیاز نیاز داشتید (امتیاز شما: ${toPersianDigits(state.stageScore)})`;
+            ui.btnNextAction.style.display = "none";
+            ui.btnResultRetry.textContent = "تلاش مجدد این مرحله";
+            sound.playFanfare(false);
+          }
+          ui.resScoreLbl.textContent = "امتیاز کل";
+          ui.resScore.textContent = toPersianDigits(state.totalScore);
+        } else {
+          isNewRecord = saveBest("timeattack", state.totalScore);
+          stars = state.totalScore >= 160 ? 3 : state.totalScore >= 90 ? 2 : state.totalScore >= 40 ? 1 : 0;
+          ui.resTitle.textContent = "زمان به پایان رسید!";
+          ui.resSubtitle.textContent = `بهترین کمبوی شما: ×${toPersianDigits(state.bestStreak)}`;
+          ui.btnNextAction.style.display = "none";
+          ui.btnResultRetry.textContent = "تکرار بازی";
+          ui.resScoreLbl.textContent = "امتیاز نهایی";
+          ui.resScore.textContent = toPersianDigits(state.totalScore);
+          sound.playFanfare(stars > 0);
+        }
+
+        ui.resRecordWrap.innerHTML = isNewRecord ? `<div class="record-tag">🏆 رکورد جدید ثبت شد!</div>` : "";
+        ui.resBullseyes.textContent = toPersianDigits(state.bullseyes);
+        ui.resAccuracy.textContent = `${toPersianDigits(acc)}٪`;
+
+        // Stars animation
+        const starEls = ui.resStars.querySelectorAll(".star");
+        starEls.forEach((el, idx) => {
+          el.classList.remove("earned");
+          if (idx < stars) {
+            setTimeout(() => el.classList.add("earned"), 140 + idx * 180);
+          }
+        });
+
+        // Shots breakdown
+        ui.resShots.innerHTML = "";
+        state.stageShots.slice(-14).forEach(s => {
+          const chip = document.createElement("span");
+          chip.className = `shot-chip ${s.chip}`;
+          chip.textContent = s.isX ? "X" : s.score > 0 ? toPersianDigits(s.score) : "—";
+          ui.resShots.appendChild(chip);
+        });
+
+        refreshMenuRecords();
+      }
+
+      /* =====================================================================
+         9. MAIN SIMULATION UPDATE
+         ===================================================================== */
+      function update(dt) {
+        state.elapsed += dt;
+
+        // Clouds
+        for (const c of state.clouds) {
+          c.x += (c.speed + state.windMps * 6) * dt;
+          if (c.x > WORLD_W + 260) c.x = -240;
+          if (c.x < -280) c.x = WORLD_W + 220;
+        }
+
+        // Wind leaves/dust
+        for (const l of state.leaves) {
+          l.phase += dt * 2.4;
+          l.x += (state.windMps * 28 + Math.sin(l.phase) * 14) * dt;
+          l.y += (l.speedY + Math.cos(l.phase * 1.3) * 8) * dt;
+          if (l.x > WORLD_W + 60) l.x = -50;
+          if (l.x < -60) l.x = WORLD_W + 50;
+          if (l.y > GROUND_Y - 6) {
+            l.y = 90 + Math.random() * 120;
+            l.x = Math.random() * WORLD_W;
+          }
+        }
+
+        if (state.screen !== "playing") return;
+
+        // Keyboard aiming & charging
+        if (state.keys.up) state.aim.angle = Math.max(-1.28, state.aim.angle - 1.15 * dt);
+        if (state.keys.down) state.aim.angle = Math.min(0.55, state.aim.angle + 1.15 * dt);
+        if (state.keys.charging) {
+          state.aim.power += state.keys.chargeDir * 0.92 * dt;
+          if (state.aim.power >= 1) {
+            state.aim.power = 1;
+            state.keys.chargeDir = -1;
+          } else if (state.aim.power <= 0.16) {
+            state.aim.power = 0.16;
+            state.keys.chargeDir = 1;
+          }
+          sound.playDrawTick(state.aim.power);
+        }
+
+        // Breathing sway if holding draw > 2.2s
+        if (state.aim.active || state.keys.charging) {
+          state.aim.holdTime += dt;
+          if (state.aim.holdTime > 2.2 && state.aim.power > 0.4) {
+            const fatigue = Math.min(1, (state.aim.holdTime - 2.2) / 3.0);
+            state.aim.swayOffset = Math.sin(state.elapsed * 5.2) * 0.032 * fatigue;
+          } else {
+            state.aim.swayOffset = 0;
+          }
+        } else {
+          state.aim.swayOffset = 0;
+        }
+
+        // Time Attack countdown
+        if (state.mode === "timeattack") {
+          const prevSec = Math.ceil(state.timeLeft);
+          state.timeLeft -= dt;
+          if (Math.ceil(state.timeLeft) !== prevSec) updateHUD();
+          if (state.timeLeft <= 0) {
+            state.timeLeft = 0;
+            updateHUD();
+            showResultModal();
+            return;
+          }
+        }
+
+        // Target motion & recoil
+        const tgt = state.target;
+        tgt.phase += dt;
+        if (tgt.moveAmpY > 0) {
+          tgt.y = tgt.baseY + Math.sin(tgt.phase * tgt.moveSpeedY) * tgt.moveAmpY;
+        }
+        if (tgt.moveAmpX > 0) {
+          tgt.x = tgt.baseX + Math.sin(tgt.phase * tgt.moveSpeedX) * tgt.moveAmpX;
+        }
+        if (tgt.hitRecoil > 0.05) {
+          tgt.hitRecoil *= Math.pow(0.001, dt);
+        } else {
+          tgt.hitRecoil = 0;
+        }
+
+        // Bonus item motion
+        if (state.bonus && state.bonus.alive) {
+          if (state.bonus.type === "apple") {
+            state.bonus.x = tgt.x + tgt.hitRecoil * 0.7;
+            state.bonus.y = tgt.y + state.bonus.offsetY;
+          } else {
+            state.bonus.bobPhase += dt * 2.1;
+            state.bonus.y = state.bonus.baseY + Math.sin(state.bonus.bobPhase) * 28;
+          }
+        }
+
+        // Arrow physics & sub-stepped collision
+        const windAccelX = state.windMps * 22;
+        const facePlaneX = tgt.x - 4;
+
+        // Time Attack delayed target shift
+        if (state.mode === "timeattack" && state.timeAttackShiftTimer > 0) {
+          state.timeAttackShiftTimer -= dt;
+          if (state.timeAttackShiftTimer <= 0) {
+            state.timeAttackShiftTimer = 0;
+            state.arrows = state.arrows.filter(a => a.state === "flying");
+            randomizeTimeAttackTarget(false);
+            updateHUD();
+          }
+        }
+
+        for (const a of state.arrows) {
+          if (a.wobbleTime > 0) {
+            a.wobbleTime = Math.max(0, a.wobbleTime - dt);
+          }
+
+          if (a.state === "stuck_target") {
+            a.x = tgt.x + a.relX + tgt.hitRecoil;
+            a.y = tgt.y + a.relY;
+            continue;
+          }
+
+          if (a.state !== "flying") continue;
+
+          const prevTipX = a.x;
+          const prevTipY = a.y;
+
+          // Record flight trail
+          a.trail.push({ x: a.x, y: a.y });
+          if (a.trail.length > 18) a.trail.shift();
+
+          // Integrate velocity & position
+          a.vx += windAccelX * dt;
+          a.vy += GRAVITY * dt;
+          // Gentle aerodynamic drag
+          a.vx *= Math.pow(0.96, dt);
+          a.vy *= Math.pow(0.985, dt);
+
+          a.x += a.vx * dt;
+          a.y += a.vy * dt;
+          a.angle = Math.atan2(a.vy, a.vx);
+
+          // 1. Check Bonus Apple / Balloon pierce (doesn't stop arrow!)
+          if (state.bonus && state.bonus.alive && !a.hitBonus) {
+            const dBonus = distPointToSegment(state.bonus.x, state.bonus.y, prevTipX, prevTipY, a.x, a.y);
+            if (dBonus <= state.bonus.radius + 5) {
+              a.hitBonus = true;
+              state.bonus.alive = false;
+              const bonusPts = 15;
+              state.totalScore += bonusPts;
+              state.stageScore += bonusPts;
+              sound.playBonusHit();
+              triggerShake(6, 0.22);
+
+              if (state.bonus.type === "apple") {
+                spawnParticles(state.bonus.x, state.bonus.y, 26, ["#fde047", "#f59e0b", "#ef4444", "#84cc16"], 80, 280, 0.85);
+                spawnPopup(state.bonus.x - 25, state.bonus.y - 22, "سیب طلایی! +۱۵ 🍎", "#fde047", true);
+              } else {
+                spawnParticles(state.bonus.x, state.bonus.y, 28, ["#f43f5e", "#fb7185", "#fde047", "#ffffff"], 90, 300, 0.4);
+                const msg = state.mode === "timeattack" ? "بادکنک جایزه! +۱۵ و +۵ ثانیه 🎈" : "بادکنک جایزه! +۱۵ 🎈";
+                if (state.mode === "timeattack") state.timeLeft += 5;
+                spawnPopup(state.bonus.x - 35, state.bonus.y - 22, msg, "#fb7185", true);
+              }
+              updateHUD();
+            }
+          }
+
+          // 2. Check Target Face Plane Crossing (exact ray-plane intersection)
+          if (prevTipX <= facePlaneX && a.x >= facePlaneX && a.vx > 0) {
+            const t = (facePlaneX - prevTipX) / Math.max(0.0001, a.x - prevTipX);
+            const hitY = prevTipY + (a.y - prevTipY) * t;
+            const dy = hitY - tgt.y;
+
+            if (Math.abs(dy) <= tgt.radius) {
+              // Slight realistic penetration depth into straw boss
+              const embedX = facePlaneX + 10 + Math.cos(a.angle) * 6;
+              handleTargetHit(a, embedX, hitY);
+              continue;
+            }
+          }
+
+          // 3. Check Wooden Stand Legs Hit
+          const standX = tgt.x + 8;
+          if (prevTipX <= standX && a.x >= standX && a.vx > 0) {
+            const t = (standX - prevTipX) / Math.max(0.0001, a.x - prevTipX);
+            const hitY = prevTipY + (a.y - prevTipY) * t;
+            if (hitY > tgt.y + tgt.radius && hitY < GROUND_Y - 4) {
+              a.state = "stuck_wood";
+              a.x = standX;
+              a.y = hitY;
+              a.wobbleTime = 0.4;
+              a.wobbleAmp = 0.12;
+              handleMiss(a, "wood", standX, hitY);
+              continue;
+            }
+          }
+
+          // 4. Check Ground Hit
+          if (a.y >= GROUND_Y) {
+            const t = (GROUND_Y - prevTipY) / Math.max(0.0001, a.y - prevTipY);
+            const gx = prevTipX + (a.x - prevTipX) * Math.max(0, Math.min(1, t));
+            a.state = "stuck_ground";
+            a.x = gx;
+            a.y = GROUND_Y + 4;
+            a.wobbleTime = 0.35;
+            a.wobbleAmp = 0.08;
+            handleMiss(a, "ground", gx, GROUND_Y);
+            continue;
+          }
+
+          // 5. Out of bounds
+          if (a.x > WORLD_W + 260 || a.x < -200 || a.y > WORLD_H + 150) {
+            a.state = "out";
+            handleMiss(a, "out", a.x, a.y);
+          }
+        }
+
+        // Particles
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.life -= dt;
+          if (p.life <= 0) {
+            state.particles.splice(i, 1);
+            continue;
+          }
+          p.vy += GRAVITY * p.gravityMul * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+        }
+
+        // Floating Score Popups
+        for (let i = state.popups.length - 1; i >= 0; i--) {
+          const pop = state.popups[i];
+          pop.life -= dt;
+          pop.y -= 36 * dt;
+          if (pop.life <= 0) state.popups.splice(i, 1);
+        }
+
+        // Hit Cam timer
+        if (state.hitCam.timer > 0) {
+          state.hitCam.timer = Math.max(0, state.hitCam.timer - dt);
+        }
+
+        // Screen shake decay
+        if (state.shakeTime > 0) {
+          state.shakeTime = Math.max(0, state.shakeTime - dt);
+        }
+
+        // Pending end-of-stage delay
+        if (state.pendingEndTimer > 0) {
+          state.pendingEndTimer -= dt;
+          if (state.pendingEndTimer <= 0) {
+            state.pendingEndTimer = 0;
+            showResultModal();
+          }
+        }
+      }
+
+      function distPointToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+      }
+
+      /* =====================================================================
+         10. RENDERING PIPELINE (SCENIC CANVAS 2D)
+         ===================================================================== */
+      function render() {
+        ctx.save();
+        ctx.scale(view.dpr, view.dpr);
+
+        // Full-bleed sky gradient across entire viewport
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, view.height);
+        skyGrad.addColorStop(0, "#1e3a5f");
+        skyGrad.addColorStop(0.42, "#3b82f6");
+        skyGrad.addColorStop(0.75, "#93c5fd");
+        skyGrad.addColorStop(1, "#fde68a");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, view.width, view.height);
+
+        // Apply world transform + subtle camera shake
+        let shakeX = 0, shakeY = 0;
+        if (state.shakeTime > 0) {
+          const factor = state.shakeTime / 0.25;
+          shakeX = (Math.random() * 2 - 1) * state.shakeIntensity * factor;
+          shakeY = (Math.random() * 2 - 1) * state.shakeIntensity * factor;
+        }
+
+        ctx.translate(view.offsetX + shakeX * view.scale, view.offsetY + shakeY * view.scale);
+        ctx.scale(view.scale, view.scale);
+
+        // World bounds visible in bleed
+        const bleedLeft = -view.offsetX / view.scale - 60;
+        const bleedRight = (view.width - view.offsetX) / view.scale + 60;
+        const bleedBottom = (view.height - view.offsetY) / view.scale + 60;
+
+        drawSunAndSky(bleedLeft, bleedRight);
+        drawMountainsAndHills(bleedLeft, bleedRight, bleedBottom);
+        drawWindFlag();
+        drawWindLeaves();
+        drawTargetAndStand();
+        drawBonusItem();
+        drawTrajectoryPreview();
+        drawArcherAndBow();
+        drawArrows();
+        drawParticles();
+        drawPopups();
+        drawAimAssistHUD();
+        drawHitCam();
+        drawFirstShotHint();
+
+        ctx.restore();
+      }
+
+      function drawSunAndSky(bleedLeft, bleedRight) {
+        // Warm golden sun
+        const sunX = 1040;
+        const sunY = 128;
+        const sunGlow = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 165);
+        sunGlow.addColorStop(0, "rgba(255, 251, 235, 0.98)");
+        sunGlow.addColorStop(0.22, "rgba(254, 240, 138, 0.72)");
+        sunGlow.addColorStop(0.6, "rgba(251, 191, 36, 0.18)");
+        sunGlow.addColorStop(1, "rgba(251, 191, 36, 0)");
+        ctx.fillStyle = sunGlow;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 165, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Clouds
+        for (const c of state.clouds) {
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.scale(c.scale, c.scale);
+          ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity})`;
+          ctx.beginPath();
+          ctx.arc(0, 0, 28, 0, Math.PI * 2);
+          ctx.arc(28, -10, 34, 0, Math.PI * 2);
+          ctx.arc(62, -2, 26, 0, Math.PI * 2);
+          ctx.arc(30, 8, 28, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawMountainsAndHills(bleedLeft, bleedRight, bleedBottom) {
+        // Distant mountains
+        ctx.fillStyle = "#5b7da8";
+        ctx.beginPath();
+        ctx.moveTo(bleedLeft, GROUND_Y);
+        ctx.lineTo(-100, 415);
+        ctx.lineTo(130, 315);
+        ctx.lineTo(310, 395);
+        ctx.lineTo(520, 278);
+        ctx.lineTo(740, 385);
+        ctx.lineTo(950, 295);
+        ctx.lineTo(1160, 375);
+        ctx.lineTo(1380, 325);
+        ctx.lineTo(bleedRight, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Snow caps subtly lit
+        ctx.fillStyle = "rgba(255, 251, 235, 0.35)";
+        ctx.beginPath();
+        ctx.moveTo(520, 278);
+        ctx.lineTo(478, 316);
+        ctx.lineTo(510, 308);
+        ctx.lineTo(535, 322);
+        ctx.lineTo(564, 309);
+        ctx.closePath();
+        ctx.fill();
+
+        // Mid rolling hills
+        const hillGrad = ctx.createLinearGradient(0, 420, 0, GROUND_Y);
+        hillGrad.addColorStop(0, "#4d8b55");
+        hillGrad.addColorStop(1, "#2f6b3d");
+        ctx.fillStyle = hillGrad;
+        ctx.beginPath();
+        ctx.moveTo(bleedLeft, GROUND_Y);
+        ctx.quadraticCurveTo(240, 445, 580, 520);
+        ctx.quadraticCurveTo(960, 450, bleedRight, 530);
+        ctx.lineTo(bleedRight, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Silhouette pine/cypress trees along horizon
+        const trees = [90, 260, 305, 480, 620, 655, 810, 1185, 1235];
+        ctx.fillStyle = "#245532";
+        for (const tx of trees) {
+          const h = 44 + ((tx * 17) % 28);
+          const baseY = 548 + ((tx * 7) % 14);
+          ctx.beginPath();
+          ctx.moveTo(tx, baseY - h);
+          ctx.lineTo(tx - 15, baseY);
+          ctx.lineTo(tx + 15, baseY);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Wooden range fence in background
+        ctx.strokeStyle = "rgba(92, 61, 36, 0.55)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(bleedLeft, GROUND_Y - 28);
+        ctx.lineTo(bleedRight, GROUND_Y - 28);
+        ctx.moveTo(bleedLeft, GROUND_Y - 14);
+        ctx.lineTo(bleedRight, GROUND_Y - 14);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(92, 61, 36, 0.65)";
+        for (let fx = Math.floor(bleedLeft / 90) * 90; fx < bleedRight; fx += 90) {
+          ctx.fillRect(fx - 3, GROUND_Y - 38, 6, 38);
+        }
+
+        // Foreground lush grass meadow
+        const turfGrad = ctx.createLinearGradient(0, GROUND_Y, 0, Math.max(WORLD_H, bleedBottom));
+        turfGrad.addColorStop(0, "#4ea832");
+        turfGrad.addColorStop(0.18, "#388524");
+        turfGrad.addColorStop(1, "#1e4b17");
+        ctx.fillStyle = turfGrad;
+        ctx.fillRect(bleedLeft, GROUND_Y, bleedRight - bleedLeft, Math.max(WORLD_H, bleedBottom) - GROUND_Y);
+
+        // Top grass highlight strip
+        ctx.fillStyle = "#76c945";
+        ctx.fillRect(bleedLeft, GROUND_Y - 2, bleedRight - bleedLeft, 5);
+
+        // Distance markers on field (10m, 20m, 30m, 40m...)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        ctx.font = "600 12px Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        for (let d = 10; d <= 50; d += 10) {
+          const mx = ARCHER_X + d * 19;
+          ctx.fillRect(mx - 1, GROUND_Y + 4, 2, 10);
+          ctx.fillText(`${toPersianDigits(d)}m`, mx, GROUND_Y + 26);
+        }
+      }
+
+      function drawWindFlag() {
+        const poleX = Math.min(state.target.baseX - 135, 760);
+        const poleTop = GROUND_Y - 115;
+
+        // Pole
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(poleX, GROUND_Y + 2);
+        ctx.lineTo(poleX, poleTop);
+        ctx.stroke();
+
+        // Finial knob
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(poleX, poleTop, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dynamic fluttering windsock/flag
+        const w = state.windMps;
+        const dir = w >= 0 ? 1 : -1;
+        const mag = Math.min(1, Math.abs(w) / 7);
+        const len = 18 + mag * 46;
+        const droop = (1 - mag) * 24;
+        const flutter = Math.sin(state.elapsed * (5 + mag * 14)) * (3 + mag * 7);
+
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.moveTo(poleX, poleTop + 4);
+        ctx.quadraticCurveTo(
+          poleX + dir * len * 0.55,
+          poleTop + 4 + droop * 0.5 + flutter * 0.6,
+          poleX + dir * len,
+          poleTop + 10 + droop + flutter
+        );
+        ctx.lineTo(poleX + dir * len * 0.85, poleTop + 20 + droop + flutter * 0.8);
+        ctx.quadraticCurveTo(
+          poleX + dir * len * 0.45,
+          poleTop + 22 + droop * 0.4 - flutter * 0.3,
+          poleX,
+          poleTop + 24
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        // White stripe on flag
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(poleX + dir * len * 0.38, poleTop + 8 + droop * 0.3);
+        ctx.lineTo(poleX + dir * len * 0.35, poleTop + 21 + droop * 0.3);
+        ctx.stroke();
+      }
+
+      function drawWindLeaves() {
+        const speedFactor = Math.abs(state.windMps);
+        for (const l of state.leaves) {
+          ctx.save();
+          ctx.translate(l.x, l.y);
+          ctx.rotate(l.phase);
+          ctx.globalAlpha = 0.25 + Math.min(0.55, speedFactor * 0.08);
+          ctx.fillStyle = l.tint;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, l.size * 1.6, l.size * 0.65, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawTargetAndStand() {
+        const tgt = state.target;
+        const rx = tgt.radius * 0.29; // 3/4 perspective ellipse width
+        const ry = tgt.radius;
+        const tx = tgt.x + tgt.hitRecoil;
+        const ty = tgt.y;
+
+        // Ground shadow
+        ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
+        ctx.beginPath();
+        ctx.ellipse(tgt.x + 12, GROUND_Y + 4, 52, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Vertical guide rail if target moves vertically
+        if (tgt.moveAmpY > 0) {
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+          ctx.lineWidth = 4;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.moveTo(tgt.baseX + 18, tgt.baseY - tgt.moveAmpY - tgt.radius - 12);
+          ctx.lineTo(tgt.baseX + 18, GROUND_Y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Wooden tripod stand legs
+        ctx.lineCap = "round";
+        // Back leg
+        ctx.strokeStyle = "#78350f";
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(tx + 14, ty - 12);
+        ctx.lineTo(tx + 56, GROUND_Y + 2);
+        ctx.stroke();
+
+        // Front leg
+        ctx.strokeStyle = "#92400e";
+        ctx.lineWidth = 11;
+        ctx.beginPath();
+        ctx.moveTo(tx + 4, ty - 16);
+        ctx.lineTo(tx - 16, GROUND_Y + 2);
+        ctx.stroke();
+
+        // Mid support crossbar
+        ctx.strokeStyle = "#b45309";
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(tx - 8, ty + ry + 26);
+        ctx.lineTo(tx + 42, ty + ry + 26);
+        ctx.stroke();
+
+        // Straw Boss Cylinder (back & side thickness)
+        const bossDepth = 26;
+        ctx.fillStyle = "#c29b57";
+        ctx.beginPath();
+        ctx.ellipse(tx + bossDepth, ty, rx * 1.05, ry * 1.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#d9b36c";
+        ctx.fillRect(tx - 2, ty - ry * 1.05, bossDepth + 2, ry * 2.1);
+
+        // Straw texture bands
+        ctx.strokeStyle = "rgba(120, 53, 15, 0.28)";
+        ctx.lineWidth = 2;
+        for (let i = -3; i <= 3; i++) {
+          const sy = ty + (i / 3.5) * ry;
+          ctx.beginPath();
+          ctx.moveTo(tx + 4, sy);
+          ctx.lineTo(tx + bossDepth + rx * 0.4, sy);
+          ctx.stroke();
+        }
+
+        // Front target face (concentric Olympic rings drawn outer -> inner)
+        const faceX = tx - 4;
+        for (let i = RINGS.length - 1; i >= 0; i--) {
+          const ring = RINGS[i];
+          ctx.fillStyle = ring.color;
+          ctx.strokeStyle = ring.stroke;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(faceX, ty, rx * ring.maxNorm, ry * ring.maxNorm, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Tiny center cross inside X-ring
+        ctx.strokeStyle = "#92400e";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(faceX - 2, ty);
+        ctx.lineTo(faceX + 2, ty);
+        ctx.moveTo(faceX, ty - 3.5);
+        ctx.lineTo(faceX, ty + 3.5);
+        ctx.stroke();
+      }
+
+      function drawBonusItem() {
+        const b = state.bonus;
+        if (!b || !b.alive) return;
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+
+        if (b.type === "apple") {
+          // Subtle golden aura
+          const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 30);
+          glow.addColorStop(0, "rgba(253, 224, 71, 0.65)");
+          glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(0, 0, 30, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Golden apple body
+          const aGrad = ctx.createRadialGradient(-5, -5, 2, 0, 0, b.radius);
+          aGrad.addColorStop(0, "#fef08a");
+          aGrad.addColorStop(0.55, "#f59e0b");
+          aGrad.addColorStop(1, "#b45309");
+          ctx.fillStyle = aGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Stem & leaf
+          ctx.strokeStyle = "#78350f";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(0, -b.radius + 2);
+          ctx.quadraticCurveTo(2, -b.radius - 7, 6, -b.radius - 8);
+          ctx.stroke();
+
+          ctx.fillStyle = "#4ade80";
+          ctx.beginPath();
+          ctx.ellipse(-6, -b.radius - 4, 6, 3, -0.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Balloon string
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(0, b.radius);
+          ctx.quadraticCurveTo(6, b.radius + 24, -4, b.radius + 54);
+          ctx.stroke();
+
+          // Balloon body
+          const bGrad = ctx.createRadialGradient(-6, -8, 3, 0, 0, b.radius * 1.1);
+          bGrad.addColorStop(0, "#fda4af");
+          bGrad.addColorStop(0.5, "#f43f5e");
+          bGrad.addColorStop(1, "#be123c");
+          ctx.fillStyle = bGrad;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, b.radius * 0.9, b.radius * 1.12, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Specular highlight
+          ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+          ctx.beginPath();
+          ctx.ellipse(-7, -8, 4, 7, -0.35, 0, Math.PI * 2);
+          ctx.fill();
+
+          // +15 label
+          ctx.fillStyle = "#fff";
+          ctx.font = "800 11px Tahoma, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("+۱۵", 0, 4);
+        }
+
+        ctx.restore();
+      }
+
+      function drawTrajectoryPreview() {
+        const drawing = state.aim.active || state.keys.charging;
+        if (!drawing || state.aim.power < 0.14 || !state.showGuide) return;
+
+        const angle = state.aim.angle + state.aim.swayOffset;
+        const speed = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * state.aim.power;
+        const origin = getArrowLaunchOrigin(angle, state.aim.power);
+        let x = origin.x;
+        let y = origin.y;
+        let vx = Math.cos(angle) * speed;
+        let vy = Math.sin(angle) * speed;
+
+        const simDt = 0.032;
+        const steps = Math.round(28 * state.guideRatio);
+        // Note: preview shows pure ballistic arc WITHOUT wind so player reads wind & compensates!
+        for (let i = 1; i <= steps; i++) {
+          vy += GRAVITY * simDt;
+          vx *= Math.pow(0.96, simDt);
+          vy *= Math.pow(0.985, simDt);
+          x += vx * simDt;
+          y += vy * simDt;
+          if (y > GROUND_Y) break;
+
+          const alpha = (1 - i / (steps + 1)) * 0.82;
+          const r = 4.2 - (i / steps) * 1.8;
+          ctx.fillStyle = `rgba(255, 251, 235, ${alpha.toFixed(2)})`;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawArcherAndBow() {
+        const drawing = state.aim.active || state.keys.charging;
+        const power = drawing ? state.aim.power : 0;
+        const angle = (drawing ? state.aim.angle + state.aim.swayOffset : -0.15);
+        const breathe = Math.sin(state.elapsed * 2.2) * 1.6;
+
+        // Ground shadow under archer
+        ctx.fillStyle = "rgba(15, 23, 42, 0.3)";
+        ctx.beginPath();
+        ctx.ellipse(ARCHER_X, GROUND_Y + 4, 34, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Back Quiver with feathered arrows
+        ctx.save();
+        ctx.translate(ARCHER_X - 18, 495 + breathe);
+        ctx.rotate(-0.32);
+        ctx.fillStyle = "#78350f";
+        ctx.strokeStyle = "#451a03";
+        ctx.lineWidth = 2;
+        roundRect(ctx, -8, -10, 16, 56, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Spare arrows sticking out of quiver
+        const spareCount = Math.min(4, state.arrowsLeft);
+        for (let i = 0; i < spareCount; i++) {
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-4 + i * 3, -10);
+          ctx.lineTo(-6 + i * 3.5, -26);
+          ctx.stroke();
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(-8 + i * 3.5, -28, 4, 6);
+        }
+        ctx.restore();
+
+        // Legs (boots & trousers)
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 13;
+        // Back leg
+        ctx.beginPath();
+        ctx.moveTo(ARCHER_X - 4, 540);
+        ctx.lineTo(ARCHER_X - 18, 578);
+        ctx.lineTo(ARCHER_X - 20, GROUND_Y - 2);
+        ctx.stroke();
+        // Front leg
+        ctx.beginPath();
+        ctx.moveTo(ARCHER_X + 6, 540);
+        ctx.lineTo(ARCHER_X + 20, 578);
+        ctx.lineTo(ARCHER_X + 22, GROUND_Y - 2);
+        ctx.stroke();
+
+        // Boots
+        ctx.fillStyle = "#451a03";
+        ctx.fillRect(ARCHER_X - 27, GROUND_Y - 8, 17, 10);
+        ctx.fillRect(ARCHER_X + 15, GROUND_Y - 8, 19, 10);
+
+        // Torso (emerald forest archer tunic)
+        const tunicGrad = ctx.createLinearGradient(ARCHER_X - 16, 474, ARCHER_X + 18, 544);
+        tunicGrad.addColorStop(0, "#0f766e");
+        tunicGrad.addColorStop(1, "#115e59");
+        ctx.fillStyle = tunicGrad;
+        roundRect(ctx, ARCHER_X - 15, 475 + breathe, 32, 70, 12);
+        ctx.fill();
+
+        // Leather belt & gold buckle
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(ARCHER_X - 15, 524 + breathe, 32, 8);
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillRect(ARCHER_X + 4, 524 + breathe, 7, 8);
+
+        // Head & hooded cap
+        const headX = ARCHER_X + 2;
+        const headY = 456 + breathe;
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(headX, headY, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hair / Cap
+        ctx.fillStyle = "#065f46";
+        ctx.beginPath();
+        ctx.arc(headX - 2, headY - 4, 15.5, Math.PI * 0.95, Math.PI * 2.08);
+        ctx.lineTo(headX - 18, headY - 2);
+        ctx.closePath();
+        ctx.fill();
+        // Feather in cap
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(headX - 12, headY - 12);
+        ctx.quadraticCurveTo(headX - 24, headY - 24, headX - 28, headY - 18);
+        ctx.stroke();
+
+        // Eye looking toward aim direction
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(headX + 8, headY - 1 + Math.sin(angle) * 2.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bow & Arms transform around shoulder/bow pivot
+        const shoulderX = ARCHER_X + 6;
+        const shoulderY = 486 + breathe;
+
+        // Bow position along aim line
+        const bowDist = 36;
+        const bx = shoulderX + Math.cos(angle) * bowDist;
+        const by = shoulderY + Math.sin(angle) * bowDist;
+
+        // Extended bow arm (back arm holding bow grip)
+        ctx.strokeStyle = "#14b8a6";
+        ctx.lineWidth = 9.5;
+        ctx.beginPath();
+        ctx.moveTo(shoulderX, shoulderY);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+
+        // Hand gripping riser
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Bow & String in rotated local coordinates
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(angle);
+
+        const flex = power * 15;
+        const tipX = -12 - flex * 0.75;
+        const tipY = 56 - flex * 0.28;
+        const stringPullX = -12 - power * 36;
+
+        // Bowstring
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 1.9;
+        ctx.beginPath();
+        ctx.moveTo(tipX, -tipY);
+        ctx.lineTo(stringPullX, 0);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Upper & lower curved recurve limbs
+        ctx.strokeStyle = "#92400e";
+        ctx.lineWidth = 5.5;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.quadraticCurveTo(10, -34, tipX, -tipY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, 10);
+        ctx.quadraticCurveTo(10, 34, tipX, tipY);
+        ctx.stroke();
+
+        // Golden limb accents
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(tipX + 4, -tipY + 7);
+        ctx.lineTo(tipX, -tipY);
+        ctx.moveTo(tipX + 4, tipY - 7);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Bow grip / riser
+        ctx.strokeStyle = "#451a03";
+        ctx.lineWidth = 7.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(0, 11);
+        ctx.stroke();
+
+        // Nocked arrow on bow when player has arrows available
+        if (canShoot() || drawing) {
+          drawArrowGraphic(stringPullX + ARROW_LEN, 0, 0, 1);
+        }
+
+        ctx.restore();
+
+        // Drawing arm (front arm pulling bowstring)
+        const nockWorldX = bx + Math.cos(angle) * (-12 - power * 36);
+        const nockWorldY = by + Math.sin(angle) * (-12 - power * 36);
+        const elbowX = shoulderX - 18 - power * 10;
+        const elbowY = shoulderY + 12 - Math.sin(angle) * 8;
+
+        ctx.strokeStyle = "#0d9488";
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(shoulderX - 4, shoulderY + 2);
+        ctx.lineTo(elbowX, elbowY);
+        ctx.lineTo(nockWorldX, nockWorldY);
+        ctx.stroke();
+
+        // Drawing hand
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(nockWorldX, nockWorldY, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawArrowGraphic(tipX, tipY, angle, alpha = 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(tipX, tipY);
+        ctx.rotate(angle);
+
+        // Wooden/Carbon Shaft
+        ctx.strokeStyle = "#f1f5f9";
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN, 0);
+        ctx.lineTo(-4, 0);
+        ctx.stroke();
+
+        // Metallic Broadhead Tip
+        ctx.fillStyle = "#cbd5e1";
+        ctx.beginPath();
+        ctx.moveTo(4, 0);
+        ctx.lineTo(-9, -4.5);
+        ctx.lineTo(-6, 0);
+        ctx.lineTo(-9, 4.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Fletching feathers (bright red & gold)
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN + 14, 0);
+        ctx.lineTo(-ARROW_LEN + 2, -6.5);
+        ctx.lineTo(-ARROW_LEN - 4, -6.5);
+        ctx.lineTo(-ARROW_LEN + 4, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.moveTo(-ARROW_LEN + 14, 0);
+        ctx.lineTo(-ARROW_LEN + 2, 6.5);
+        ctx.lineTo(-ARROW_LEN - 4, 6.5);
+        ctx.lineTo(-ARROW_LEN + 4, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function drawArrows() {
+        for (const a of state.arrows) {
+          if (a.state === "out") continue;
+
+          // Subtle motion streak behind flying arrow
+          if (a.state === "flying" && a.trail.length > 2) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(a.trail[0].x, a.trail[0].y);
+            for (let i = 1; i < a.trail.length; i++) {
+              ctx.lineTo(a.trail[i].x, a.trail[i].y);
+            }
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          let drawAngle = a.angle;
+          if (a.wobbleTime > 0) {
+            drawAngle += Math.sin(a.wobbleTime * 48) * a.wobbleAmp * (a.wobbleTime / 0.55);
+          }
+
+          drawArrowGraphic(a.x, a.y, drawAngle, 1);
+        }
+      }
+
+      function drawParticles() {
+        for (const p of state.particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawPopups() {
+        for (const pop of state.popups) {
+          const t = Math.max(0, pop.life / pop.maxLife);
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, t * 1.5);
+          ctx.font = pop.big ? "900 24px Tahoma, sans-serif" : "800 18px Tahoma, sans-serif";
+          ctx.textAlign = "center";
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+          ctx.strokeText(pop.text, pop.x, pop.y);
+          ctx.fillStyle = pop.color;
+          ctx.fillText(pop.text, pop.x, pop.y);
+          ctx.restore();
+        }
+      }
+
+      function drawAimAssistHUD() {
+        const drawing = state.aim.active || state.keys.charging;
+        if (!drawing || state.aim.power < 0.05) return;
+
+        // Draw subtle pull indicator line when dragging with pointer
+        if (state.aim.active) {
+          ctx.save();
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(state.aim.startX, state.aim.startY);
+          ctx.lineTo(state.aim.curX, state.aim.curY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = "rgba(251, 191, 36, 0.7)";
+          ctx.beginPath();
+          ctx.arc(state.aim.startX, state.aim.startY, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Power & Angle meter near archer
+        const barX = ARCHER_X - 58;
+        const barY = 398;
+        const barW = 116;
+        const barH = 12;
+        const pct = Math.round(state.aim.power * 100);
+        const deg = Math.round((-state.aim.angle * 180) / Math.PI);
+
+        ctx.save();
+        ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+        roundRect(ctx, barX - 8, barY - 26, barW + 16, 48, 10);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Bar background
+        ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+        roundRect(ctx, barX, barY, barW, barH, 6);
+        ctx.fill();
+
+        // Bar fill gradient
+        const pGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+        pGrad.addColorStop(0, "#38bdf8");
+        pGrad.addColorStop(0.55, "#fbbf24");
+        pGrad.addColorStop(1, "#ef4444");
+        ctx.fillStyle = pGrad;
+        roundRect(ctx, barX, barY, Math.max(8, barW * state.aim.power), barH, 6);
+        ctx.fill();
+
+        // Text readout
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "700 12px Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`قدرت ${toPersianDigits(pct)}٪  |  زاویه ${toPersianDigits(deg)}°`, barX + barW / 2, barY - 8);
+        ctx.restore();
+      }
+
+      function drawHitCam() {
+        const hc = state.hitCam;
+        if (hc.timer <= 0 || !hc.lastHit) return;
+
+        const alpha = Math.min(1, hc.timer * 2.2);
+        const cx = 112;
+        const cy = 196;
+        const r = 68;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Outer glass lens frame
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = hc.lastHit.score === 10 ? "#fbbf24" : "rgba(255, 255, 255, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Front-facing circular Olympic target
+        for (let i = RINGS.length - 1; i >= 0; i--) {
+          const ring = RINGS[i];
+          ctx.fillStyle = ring.color;
+          ctx.strokeStyle = ring.stroke;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * ring.maxNorm, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Crosshairs
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.22)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - r, cy);
+        ctx.lineTo(cx + r, cy);
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx, cy + r);
+        ctx.stroke();
+
+        // Previous hits in round
+        for (let i = 0; i < hc.hits.length; i++) {
+          const h = hc.hits[i];
+          const hx = cx + h.nx * r;
+          const hy = cy + h.ny * r;
+          const isLatest = i === hc.hits.length - 1;
+
+          if (isLatest) {
+            // Pulsing highlight ring
+            const pulse = 7 + Math.sin(state.elapsed * 14) * 2.5;
+            ctx.strokeStyle = "#22c55e";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(hx, hy, pulse, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = isLatest ? "#16a34a" : "#0f172a";
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(hx, hy, isLatest ? 4.5 : 3.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Bottom badge under scope
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        roundRect(ctx, cx - 56, cy + r + 16, 112, 26, 999);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = hc.lastHit.score >= 9 ? "#fde047" : "#f8fafc";
+        ctx.font = "800 13px Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(hc.lastHit.label, cx, cy + r + 33);
+
+        ctx.restore();
+      }
+
+      function drawFirstShotHint() {
+        if (state.screen !== "playing" || state.hasShotOnce || state.aim.active || state.keys.charging) return;
+        const pulse = 0.72 + Math.sin(state.elapsed * 3.5) * 0.25;
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.72)";
+        roundRect(ctx, WORLD_W / 2 - 220, 122, 440, 42, 999);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.5)";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+
+        ctx.fillStyle = "#fef08a";
+        ctx.font = "700 15px Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🎯 برای تیراندازی، روی صفحه بکشید (به عقب) و رها کنید", WORLD_W / 2, 148);
+        ctx.restore();
+      }
+
+      function roundRect(c, x, y, w, h, r) {
+        const rad = Math.min(r, w / 2, h / 2);
+        c.beginPath();
+        c.moveTo(x + rad, y);
+        c.arcTo(x + w, y, x + w, y + h, rad);
+        c.arcTo(x + w, y + h, x, y + h, rad);
+        c.arcTo(x, y + h, x, y, rad);
+        c.arcTo(x, y, x + w, y, rad);
+        c.closePath();
+      }
+
+      /* =====================================================================
+         11. UI EVENT BINDINGS
+         ===================================================================== */
+      function toggleSound() {
+        sound.init();
+        const on = sound.toggle();
+        ui.btnSound.textContent = on ? "🔊" : "🔇";
+      }
+
+      function openMenu() {
+        state.screen = "menu";
+        state.aim.active = false;
+        ui.menuOverlay.classList.remove("hidden");
+        ui.resultOverlay.classList.add("hidden");
+        ui.hud.classList.add("hidden");
+        ui.practiceBar.classList.remove("visible");
+        refreshMenuRecords();
+      }
+
+      document.querySelectorAll(".mode-card").forEach(btn => {
+        btn.addEventListener("click", () => startGame(btn.dataset.mode));
+      });
+
+      ui.btnSound.addEventListener("click", toggleSound);
+      ui.btnRestart.addEventListener("click", () => startGame(state.mode));
+      ui.btnMenu.addEventListener("click", openMenu);
+
+      ui.btnNextAction.addEventListener("click", () => {
+        state.screen = "playing";
+        ui.resultOverlay.classList.add("hidden");
+        configureStage(state.stage + 1);
+      });
+
+      ui.btnResultRetry.addEventListener("click", () => {
+        if (state.mode === "classic" && !state.stagePassed) {
+          state.totalScore = state.stageStartScore;
+          state.streak = 0;
+          state.screen = "playing";
+          ui.resultOverlay.classList.add("hidden");
+          configureStage(state.stage);
+        } else {
+          startGame(state.mode);
+        }
+      });
+      ui.btnResultMenu.addEventListener("click", openMenu);
+
+      // Practice bar actions
+      ui.pracWind.addEventListener("click", () => {
+        state.pracWindLevel = (state.pracWindLevel + 1) % 3;
+        applyPracticeSettings();
+      });
+      ui.pracMove.addEventListener("click", () => {
+        state.pracMove = !state.pracMove;
+        applyPracticeSettings();
+      });
+      ui.pracGuide.addEventListener("click", () => {
+        state.showGuide = !state.showGuide;
+        updatePracticeButtons();
+      });
+      ui.pracDist.addEventListener("click", () => {
+        state.pracDistLevel = (state.pracDistLevel + 1) % 3;
+        applyPracticeSettings();
+      });
+      ui.pracClear.addEventListener("click", () => {
+        state.arrows = state.arrows.filter(a => a.state === "flying");
+        state.hitCam.hits = [];
+        ui.shotStrip.innerHTML = "";
+        applyPracticeSettings();
+      });
+
+      /* =====================================================================
+         12. ANIMATION LOOP
+         ===================================================================== */
+      let lastTs = performance.now();
+
+      function loop(now) {
+        const dt = Math.min(0.05, (now - lastTs) / 1000);
+        lastTs = now;
+        update(dt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      refreshMenuRecords();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
